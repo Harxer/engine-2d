@@ -63,6 +63,23 @@ let input = {
     buttons: {}
   }
 }
+let handleMouseEvent = e => {
+  // console.log(`Mouse ${e.type}`)
+  input.mouse.withShift = e.shiftKey
+  input.mouse.down = (e.type == "mousedown")
+  input.mouse.buttons[e.button] = (e.type == "mousedown")
+  if (input.mouse.down) input.mouse.downAction(input.mouse.x, input.mouse.y)
+}
+
+const handleKeyPress = keyEvent => {
+  keyEvent = keyEvent || window.event;
+  // log(`Log key: ${keyEvent.keyCode}`)
+  let handledKey = input.key[keyEvent.keyCode]
+  if (handledKey == undefined) return
+
+  handledKey.down = keyEvent.type == 'keydown';
+  if (handledKey.down) handledKey.action()
+}
 
 export const InputInitializer = {
   /**
@@ -89,27 +106,19 @@ export const InputInitializer = {
       input.mouse.x = Math.floor(e.clientX - rect.left)
       input.mouse.y = (e.clientY - rect.top)
     })
-    let handleMouseEvent = e => {
-      // console.log(`Mouse ${e.type}`)
-      input.mouse.withShift = e.shiftKey
-      input.mouse.down = (e.type == "mousedown")
-      input.mouse.buttons[e.button] = (e.type == "mousedown")
-      if (input.mouse.down) input.mouse.downAction()
-    }
     element.addEventListener('mouseup', handleMouseEvent)
     element.addEventListener('mousedown', handleMouseEvent)
     element.oncontextmenu = e => e.preventDefault();
+  },
+  initKeyListener: () => {
+    window.addEventListener('keydown', handleKeyPress)
+    window.addEventListener('keyup', handleKeyPress)
+  },
+  cleanup: element => {
+      element.removeEventListener('mouseup', handleMouseEvent)
+      element.removeEventListener('mousedown', handleMouseEvent)
+      window.removeEventListener('keydown', handleKeyPress)
+      window.removeEventListener('keyup', handleKeyPress)
   }
 }
 
-const handleKeyPress = keyEvent => {
-  keyEvent = keyEvent || window.event;
-  // log(`Log key: ${keyEvent.keyCode}`)
-  let handledKey = input.key[keyEvent.keyCode]
-  if (handledKey == undefined) return
-
-  handledKey.down = keyEvent.type == 'keydown';
-  if (handledKey.down) handledKey.action()
-}
-document.addEventListener('keydown', handleKeyPress)
-document.addEventListener('keyup', handleKeyPress)
