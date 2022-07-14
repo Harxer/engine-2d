@@ -6,7 +6,6 @@
 import * as Entity from './entities/entity.js'
 import * as Engine from './engine.js'
 import * as Ui from './ui.js'
-import * as World from './world.js'
 import InputReader, { InputInitializer } from './input.js'
 
 let _canvasBg;
