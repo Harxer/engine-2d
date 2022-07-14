@@ -1,0 +1,14 @@
+{
+  "name": "hx-engine",
+  "version": "1.0.0",
+  "description": "Harxer JS graphic engine.",
+  "main": "core.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Harrison Balogh",
+  "license": "ISC",
+  "dependencies": {
+    "hx-geometry": "file:../HxGeometry"
+  }
+}
