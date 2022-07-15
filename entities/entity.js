@@ -1,4 +1,4 @@
-import { Vector, isZero, anglesMatch, boundAngle } from '../geometry.js'
+import { Vector, isZero, anglesMatch, boundAngle } from 'hx-geometry'
 
 export const STATE = {
   NONE: 0,
