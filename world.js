@@ -41,9 +41,9 @@ export const CAMERA_STYLE = {
     _view.y -= yMod
   }
 }
-export function updateTick(delta) {
+export function updateTick(delta, timestamp) {
   CAMERA_STYLE.STATIC()
-  Entity.update(delta)
+  Entity.update(delta, timestamp)
 }
 export function renderTick() {
   if (_canvasFlush) _contentContext.clearRect(_view.x, _view.y, _view.width, _view.height)
@@ -81,7 +81,6 @@ function syncCanvasSize() {
   renderBounds()
 }
 export function init(canvasBg, canvasFg = undefined) {
-  _player = new Player(0, 0, 5)
   _canvasBg = canvasBg
   _canvasFg = canvasFg
   _contentContext = _canvasBg.getContext('2d')
@@ -89,11 +88,14 @@ export function init(canvasBg, canvasFg = undefined) {
 
   InputInitializer.initMouseListener(_canvasFg)
   InputInitializer.initKeyListener()
-  InputInitializer.setKeyAction(InputReader.KEYCODE.ESC, () => Engine.running() ? Engine.stop() : Engine.start())
-  InputInitializer.setKeyAction(InputReader.KEYCODE.I, () => _canvasFlush = !_canvasFlush)
+  InputInitializer.initInputPlayerHandler()
+  InputInitializer.addKeyAction(InputReader.KEYCODE.ESC, () => Engine.running() ? Engine.stop() : Engine.start(), true, false)
+  InputInitializer.addKeyAction(InputReader.KEYCODE.I, () => _canvasFlush = !_canvasFlush, true, false)
 
   syncCanvasSize()
   window.addEventListener('resize', syncCanvasSize)
+
+  _player = new Player(viewWidth()/2, viewHeight()/2, 5)
 
   Engine.addTickEvent(updateTick)
   Engine.addRenderEvent(renderTick)

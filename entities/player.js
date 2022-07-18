@@ -5,7 +5,7 @@ import Spit from './spit.js'
 import Input from '../input.js'
 import COLOR from '../color'
 import { viewX, viewY } from '../world'
-import { Vector } from 'hx-geometry'
+import { Vector, isZero, anglesMatch, boundAngle } from 'hx-geometry'
 import InputReader from '../input.js'
 
 /**
@@ -16,32 +16,17 @@ export default class Player extends Goop {
     super(x, y, size)
 
     this.colliderType = Entity.COLLIDER_FILTER.PLAYER
-    this.accelerationMax = 2
+
     this.color = COLOR.DOMINANT
-    this.friction.magnitude(0.5)
-    this.velocityTerminal = 7
     this.SPIT_RATE = 80
     this.spitCooldownRemaining = 0
   }
 
-  update(delta) {
-    this.handleInput()
+  update(delta, timestamp) {
+    this.handleInput(delta, timestamp)
     super.update(delta)
 
-    // Spit spits
-    if (Input.isMouseDown() && !Input.isMouseWithShift() && this.state == Entity.STATE.NONE) {
-      if (this.spitCooldownRemaining <= 0) {
-        this.spitCooldownRemaining = this.SPIT_RATE
-        let y = Input.mouseLocation().y - (this.position.y - viewY())
-        let x = Input.mouseLocation().x - (this.position.x - viewX())
-        let dir = Math.atan2(y, x)
-        const INIT_SPIT_SPEED = 30
-        Particulate.generate(6, 10, this.position, Vector.fromMagnitudeAngle(6, dir), 4, 1, 1, 1, COLOR.ACCENT)
-        new Spit(this.position.x, this.position.y, Vector.fromMagnitudeAngle(INIT_SPIT_SPEED, dir), 4, COLOR.TONIC)
-      }
-    }
-
-    this.spitCooldownRemaining = Math.max(this.spitCooldownRemaining - delta, 0)
+    // this.handleSpit()
   }
 
   render(context) {
@@ -62,31 +47,49 @@ export default class Player extends Goop {
       }
     })
   }
-
-  handleInput() {
-    if (this.state == Entity.STATE.NONE) {
-      let moveMod = {
-        x: InputReader.isKeyPressed(InputReader.KEYCODE.RIGHT) - InputReader.isKeyPressed(InputReader.KEYCODE.LEFT),
-        y: InputReader.isKeyPressed(InputReader.KEYCODE.DOWN) - InputReader.isKeyPressed(InputReader.KEYCODE.UP)
-      }
-      if (moveMod.x != 0 || moveMod.y != 0) {
-        this.waypoints.clear()
-        this.acceleration.angle(Math.atan2(moveMod.y, moveMod.x))
-        this.acceleration.magnitude(this.accelerationMax)
-      } else if (this.waypoints.isEmpty()) {
-        this.acceleration.magnitude(0)
+  handleSpit() {
+    // Spit spits
+    if (Input.isMouseDown() && !Input.isMouseWithShift() && this.state == Entity.STATE.NONE) {
+      if (this.spitCooldownRemaining <= 0) {
+        this.spitCooldownRemaining = this.SPIT_RATE
+        let y = Input.mouseLocation().y - (this.position.y - viewY())
+        let x = Input.mouseLocation().x - (this.position.x - viewX())
+        let dir = Math.atan2(y, x)
+        const INIT_SPIT_SPEED = 30
+        Particulate.generate(6, 10, this.position, Vector.fromMagnitudeAngle(6, dir), 4, 1, 1, 1, COLOR.ACCENT)
+        new Spit(this.position.x, this.position.y, Vector.fromMagnitudeAngle(INIT_SPIT_SPEED, dir), 4, COLOR.TONIC)
       }
     }
-    // Mouse control
-    // if (InputReader.isMouseDown() && input.mouse.withShift) {
-    //   this.waypoints.add({ x: InputReader.mouseLocation().x, y: InputReader.mouseLocation().y })
-    //   input.mouseDown = false
-    // }
-    // if (input.mouse.buttons['2'] !== undefined) {
-    //   if (input.mouse.buttons['2'] === true) {
-    //     this.waypoints.clear()
-    //   }
-    // }
+    this.spitCooldownRemaining = Math.max(this.spitCooldownRemaining - delta, 0)
   }
+  handleInput(delta, timestamp) {
+    let inputVector = InputReader.playerInputVectorUpdate(timestamp)
 
+    if (this.state == Entity.STATE.NONE && inputVector.magnitude() > 0) {
+      // Cheater prevention - Can't have pressed input for longer than when our last input vector was extracted
+      // This check doesn't matter for the client but this code is re-used by the server.
+      let inputMagnitude = Math.min(inputVector.magnitude(), delta) * this.INPUT_ACCELERATION_MAX
+
+      // Turn if has non-instant turning
+      if (!isZero(this.turnRate)) {
+        let angDiff = anglesMatch(this.rotation, inputVector.angle(), this.turnRate * delta)
+        if (angDiff != 0) {
+          this.rotation = boundAngle(this.rotation + this.turnRate * delta * angDiff)
+          // if (this.tail !== undefined) {
+          //   this.tail.slither.angle = 0
+          //   this.tail.slither.up = angDiff == 1
+          // }
+        } else {
+          this.rotation = inputVector.angle()
+        }
+      } else {
+        this.rotation = inputVector.angle()
+      }
+
+      // let tailMod = this.tail !== undefined ? this.tail.slither.angle : 0
+      // this.rotation += tailMod
+
+      this.addImpulse(Vector.fromMagnitudeAngle(inputMagnitude, this.rotation))
+    }
+  }
 }

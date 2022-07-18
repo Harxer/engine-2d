@@ -15,7 +15,7 @@ export default class Goop extends EntityObject {
     super(x, y, Entity.COLLIDER_FILTER.MOB)
 
     this.roamSpace = 200 + Math.floor(Math.random() * 800)
-    this.color = color //setRgbaAlpha(color, Math.min(size/player.size, 1))
+    this.color = "red" //setRgbaAlpha(color, Math.min(size/player.size, 1))
     this.size = size
     this.state = Entity.STATE.NONE
     this.tail = {
@@ -28,12 +28,12 @@ export default class Goop extends EntityObject {
         this.tail.sync()
       },
       slither: {
-        MAX_ANGLE: 50 * Math.PI / 180, //(8 / (this.velocityTerminal / 7)) * Math.PI / 180
-        RATE: 5 * Math.PI / 180,
+        MAX_ANGLE: 90 * Math.PI / 180, //(8 / (this.velocityTerminal / 7)) * Math.PI / 180
+        RATE: 1 * Math.PI,
         up: false,
         angle: 0, // radians
-        update: () => {
-          this.tail.slither.angle += this.tail.slither.RATE * (this.tail.slither.up ? 1 : -1)
+        update: (delta) => {
+          this.tail.slither.angle += this.tail.slither.RATE * (this.tail.slither.up ? 1 : -1) * delta
           if (Math.abs(this.tail.slither.angle) >= this.tail.slither.MAX_ANGLE) {
             this.tail.slither.angle = this.tail.slither.MAX_ANGLE * (this.tail.slither.up ? 1 : -1)
             this.tail.slither.up = !this.tail.slither.up
@@ -56,8 +56,8 @@ export default class Goop extends EntityObject {
           this.tail.lastLength = currentLen
         }
       },
-      update: () => {
-        this.tail.slither.update()
+      update: (delta) => {
+        this.tail.slither.update(delta)
         // Record location and perpendicular rays for current tail joint
         let tailJoint = this.tail.joint.pop()
         let ang = this.velocity.angle()
@@ -70,22 +70,11 @@ export default class Goop extends EntityObject {
     this.tail.sync()
   }
 
-  update() {
-    super.update()
-
-    if (this.state == Entity.STATE.FLEE) { // Remove if out of bounds
-      let tailEndPoint = this.tail.joint[this.tail.joint.length - 1].position
-      if ((tailEndPoint.x < viewX() && this.position.x + this.size < viewX()) ||
-          (tailEndPoint.x > viewX() + viewWidth() && this.position.x + this.size >  viewX() + viewWidth()) ||
-          (tailEndPoint.y < viewY() && this.position.y + this.size < viewY()) ||
-          (tailEndPoint.y > viewY() + viewHeight() && this.position.y + this.size > viewY() + viewHeight())) {
-          this.removed = true
-          return
-      }
-    }
+  update(delta) {
+    super.update(delta)
 
     if (this.velocity.magnitude() > 0.1) {
-      this.tail.update()
+      this.tail.update(delta)
     }
   }
 
@@ -167,13 +156,5 @@ export default class Goop extends EntityObject {
         return
       }
     })
-  }
-
-  explode(vel, choke = 360 * Math.PI / 180) {
-    let color = this.state == Entity.STATE.RAGE ? COLOR.BLACK : this.color
-    let count = (vel === undefined) ? 20 : 10
-    let velocity = (vel === undefined) ? Vector.fromMagnitudeAngle(5, 0) : Vector.fromMagnitudeAngle(Math.min(vel.magnitude(), 6), vel.angle())
-    Particulate.generate(count, choke, this.position, velocity, this.size / 2, 5, 3, 4, color)
-    this.state = Entity.STATE.EXPLODED
   }
 }

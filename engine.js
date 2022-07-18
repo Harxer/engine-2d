@@ -17,6 +17,7 @@ window.requestAnimFrame =
 
 let _running = false
 let _lastUpdateTime = 0
+let _lastRenderTime = 0
 let _tickEvents = [] // {id: int, callback: Function}
 let _renderEvents = []
 let _renderTimeRemaining = 0
@@ -33,13 +34,15 @@ function update(updateTime) {
   })
   _disposeEvents = []
 
-  // Tick events - pass with delta time
-  _tickEvents.forEach(evt => evt.callback(Math.abs(updateTime - _lastUpdateTime)))
+  // Tick events - pass with delta time and timestamp of event
+  _tickEvents.forEach(evt => evt.callback(Math.abs(updateTime - _lastUpdateTime) / 1000, updateTime))
 
   // Render events
+  _renderTimeRemaining -= (updateTime - _lastUpdateTime)
   if (_renderTimeRemaining <= 0) {
-    _renderTimeRemaining = RENDER_HERTZ
-    _renderEvents.forEach(renderEvent => renderEvent())
+    _renderTimeRemaining += RENDER_HERTZ
+    _renderEvents.forEach(renderEvent => renderEvent((updateTime - _lastRenderTime) / 1000))
+    _lastRenderTime = updateTime
   }
   _renderTimeRemaining -= (updateTime - _lastUpdateTime)
 

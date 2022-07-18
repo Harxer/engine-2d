@@ -9,6 +9,7 @@
   "author": "Harrison Balogh",
   "license": "ISC",
   "dependencies": {
-    "hx-geometry": "file:../HxGeometry"
+    "hx-geometry": "file:../HxGeometry",
+    "hx-rtmesh-lib": "file:../HxRTMesh/lib"
   }
 }
