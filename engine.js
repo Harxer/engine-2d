@@ -102,9 +102,12 @@ export const running = () => _running
 /** Start engine ticks with added tick and render events. */
 export function start() {
   if (_animationFrameId) return
-  stop()
   _running = true
-  _lastUpdateTime = performance.now()
+
+  // Recover lastUpdate tick times stored when last stop() was called
+  _lastUpdateTime = performance.now() - _lastUpdateTime
+  _lastRenderTime = performance.now() - _lastRenderTime
+
   _animationFrameId = window.requestAnimationFrame(update)
 }
 
@@ -120,6 +123,11 @@ export function stepTick() {
 export function stop() {
   _running = false
   window.cancelAnimationFrame(_animationFrameId)
+
+  // Note time since last ticks relative to stop() call time  _lastUpdateTime = performance.now() - _lastUpdateTime
+  _lastUpdateTime = performance.now() - _lastUpdateTime
+  _lastRenderTime = performance.now() - _lastRenderTime
+
   _animationFrameId = undefined
 }
 

@@ -82,15 +82,17 @@ export default class Entity {
   update(delta) {
     if (!MOVE_STATES.includes(this.state)) return;
 
-    // Apply friction (treated as fluid resistance)
-    let frictionMagnitude = 0.5 * Math.pow(this.velocity.magnitude(), 2) * this.FRICTION_COEFF * delta
-    let friction = Vector.fromMagnitudeAngle(frictionMagnitude, this.velocity.flipped().angle())
-    this.addImpulse(friction)
-
     if (this.velocity.magnitude() > 0.001) {
       this.position.x += this.velocity.x() * delta
       this.position.y += this.velocity.y() * delta
     }
+
+    // The friction is calculated on the last frame's total velocity.
+    // Or at the end to count it towards the next frame.
+    // Apply friction (treated as fluid resistance)
+    let frictionMagnitude = 0.5 * Math.pow(this.velocity.magnitude(), 2) * this.FRICTION_COEFF * delta
+    let friction = Vector.fromMagnitudeAngle(frictionMagnitude, this.velocity.flipped().angle())
+    this.addImpulse(friction)
   }
 
   /**

@@ -1,6 +1,6 @@
 import EntityObject from "./entity.js"
 import { Vector } from 'hx-geometry'
-import COLOR from "../color"
+import COLOR from "../color.js"
 
 export default class Particulate extends EntityObject {
   constructor(x, y, size, color, velocity, friction) {
