@@ -2,9 +2,7 @@
  * World.js provides framework for a player, input, and camera attached to an Engine module.
  * It will render itself to an HTML canvas element.
  */
-
-import * as Entity from './entities/entity'
-import Player from './entities/player'
+import Player from './entities/player.js'
 import * as Engine from './engine.js'
 import InputReader, { InputInitializer } from './input.js'
 
@@ -21,11 +19,55 @@ let _view = {
   y: 0
 }
 
+let _entities = []
+/** Dispose entities flagged for removal */
+function entityDispose() {
+  for (let i = 0; i < _entities.length; i++) {
+    if (_entities[i].removed) {
+      _entities.splice(i, 1)
+      i--
+    }
+  }
+}
+/** Populate entity collisions array */
+function entityCheckCollisions() {
+  _entities.forEach(entity => entity.collisions = [])
+
+  for (let e = 0; e < _entities.length - 1; e++) {
+    let entity = _entities[e]
+    if (entity.colliderType === undefined || !MOVE_STATES.includes(entity.state)) continue
+
+    for (let p = e + 1; p < _entities.length; p++) {
+      let peer = _entities[p]
+      if (peer.colliderType === undefined || !MOVE_STATES.includes(peer.state) || !(COLLIDER_MASK[entity.colliderType] & peer.colliderType)) continue
+        let xDist = Math.pow(peer.position.x - entity.position.x, 2)
+        let yDist = Math.pow(peer.position.y - entity.position.y, 2)
+        if (xDist + yDist < Math.pow(peer.size + entity.size, 2)) {
+          entity.collisions.push(peer)
+          peer.collisions.push(entity)
+        }
+    }
+  }
+}
+/** Update each entity */
+function entityUpdate(delta, timestamp) {
+  _entities.forEach(entity => entity.update(delta, timestamp))
+}
+/** Render each entity */
+function entityRender(context) {
+  _entities.forEach(entity => entity.render(context))
+}
+/** Add entity to list. Returns newly added entity */
+function entityAdd(entity) {
+  // _entities.splice(0, 0, entity)
+  _entities.push(entity)
+  return entity
+}
 export const viewX = () => _view.x
 export const viewY = () => _view.y
 export const viewWidth = () => _view.width
 export const viewHeight = () => _view.height
-export const CAMERA_STYLE = {
+const CAMERA_STYLE = {
   STATIC: () => {},
   FOLLOW: () => {
     let xMod = (_player.position.x - _view.width / 2) - _view.x
@@ -41,14 +83,28 @@ export const CAMERA_STYLE = {
     _view.y -= yMod
   }
 }
-export function updateTick(delta, timestamp) {
+
+function updateTick(delta, timestamp) {
+  // entityCheckCollisions()
+  entityDispose()
+
+  // Handle player input
+  _player.handleInput(delta, InputReader.playerInputVectorUpdate(timestamp))
+  // if (InputReader.isMouseDown() && !InputReader.isMouseWithShift()) {
+      // _player.spit()
+  // }
+
+  entityUpdate(delta)
+
+  // Apply world camera style
   CAMERA_STYLE.STATIC()
-  Entity.update(delta, timestamp)
 }
-export function renderTick() {
+
+function renderTick() {
   if (_canvasFlush) _contentContext.clearRect(_view.x, _view.y, _view.width, _view.height)
-  Entity.render(_contentContext)
+  entityRender(_contentContext)
 }
+
 function renderBounds() {
   // gray outer bounds
   _clippingContext.fillStyle = "rgb(234, 236, 238)"
@@ -95,7 +151,7 @@ export function init(canvasBg, canvasFg = undefined) {
   syncCanvasSize()
   window.addEventListener('resize', syncCanvasSize)
 
-  _player = new Player(viewWidth()/2, viewHeight()/2, 5)
+  _player = entityAdd(new Player(100, 100, 10))
 
   Engine.addTickEvent(updateTick)
   Engine.addRenderEvent(renderTick)

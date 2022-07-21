@@ -114,7 +114,6 @@ export function start() {
 /** Executes a single tick step without starting engine steps. Useful for testing. */
 export function stepTick() {
   if (_running) stop()
-  _lastUpdateTime = performance.now()
   _renderTimeRemaining = 0
   window.requestAnimationFrame(update)
 }
