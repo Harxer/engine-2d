@@ -4,7 +4,9 @@
  * @author Harrison Balogh
  */
 
+// let TICK_HERTZ = 1000 / 60
 let RENDER_HERTZ = 1000 / 60
+let SYNC_HERTZ = 1000 / 100
 
 // Animation render API setup - vendor prefixes
 window.requestAnimFrame =
@@ -18,9 +20,12 @@ window.requestAnimFrame =
 let _running = false
 let _lastUpdateTime = 0
 let _lastRenderTime = 0
+let _lastSyncTime = 0
 let _tickEvents = [] // {id: int, callback: Function}
 let _renderEvents = []
+let _syncEvents = []
 let _renderTimeRemaining = 0
+let _syncTimeRemaining = 0
 let _disposeEvents = [] // id: int
 let _animationFrameId;
 
@@ -44,7 +49,14 @@ function update(updateTime) {
     _renderEvents.forEach(renderEvent => renderEvent((updateTime - _lastRenderTime) / 1000))
     _lastRenderTime = updateTime
   }
-  _renderTimeRemaining -= (updateTime - _lastUpdateTime)
+
+  // Sync events
+  _syncTimeRemaining -= (updateTime - _lastUpdateTime)
+  if (_syncTimeRemaining <= 0) {
+    _syncTimeRemaining += SYNC_HERTZ
+    _syncEvents.forEach(syncEvent => syncEvent((updateTime - _lastSyncTime) / 1000, updateTime))
+    _lastSyncTime = updateTime
+  }
 
   _lastUpdateTime = updateTime
   if (_running) _animationFrameId = window.requestAnimationFrame(update)
@@ -96,6 +108,11 @@ export function addRenderEvent(callback) {
   _renderEvents.push(callback)
 }
 
+export function addSyncEvent(callback) {
+  if (_syncEvents.includes(callback)) return
+  _syncEvents.push(callback)
+}
+
 /** Get engine running state. */
 export const running = () => _running
 
@@ -107,6 +124,7 @@ export function start() {
   // Recover lastUpdate tick times stored when last stop() was called
   _lastUpdateTime = performance.now() - _lastUpdateTime
   _lastRenderTime = performance.now() - _lastRenderTime
+  _lastSyncTime = performance.now() - _lastSyncTime
 
   _animationFrameId = window.requestAnimationFrame(update)
 }
@@ -126,6 +144,7 @@ export function stop() {
   // Note time since last ticks relative to stop() call time  _lastUpdateTime = performance.now() - _lastUpdateTime
   _lastUpdateTime = performance.now() - _lastUpdateTime
   _lastRenderTime = performance.now() - _lastRenderTime
+  _lastSyncTime = performance.now() - _lastSyncTime
 
   _animationFrameId = undefined
 }
@@ -137,6 +156,7 @@ export async function flush() {
   _disposeEvents = []
   _tickEvents = []
   _renderEvents = []
+  _syncEvents = []
 }
 
 /**

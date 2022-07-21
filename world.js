@@ -6,11 +6,19 @@ import Player from './entities/player.js'
 import * as Engine from './engine.js'
 import InputReader, { InputInitializer } from './input.js'
 
+// import UserStateModel from 'hx-rtmesh-lib/models/UserState.js'
+import UserInputModel from 'hx-rtmesh-lib/models/UserInput.js'
+import SyncGoop from './entities/SyncGoop.js'
+
+// let userState = new UserStateModel()
+let userInput = new UserInputModel()
+
 let _canvasBg;
 let _canvasFg;
 let _contentContext;
 let _clippingContext;
 let _player = null
+let _syncGoopMap = {}
 let _canvasFlush = true
 let _view = {
   width: 800,
@@ -63,6 +71,30 @@ function entityAdd(entity) {
   _entities.push(entity)
   return entity
 }
+
+/** Network method 2: send player input */
+export const getPlayerInputSync = timestamp => userInput.sync(InputReader.playerInputVectorSync(timestamp))
+/** Network method 1: send player state */
+// export const getPlayerStateSync = () => userState.sync({
+//   x: _player.position.x,
+//   y: _player.position.y,
+//   angle: _player.rotation
+// })
+export const addSyncPlayer = id => {
+  if (_syncGoopMap[id]) return
+  _syncGoopMap[id] = entityAdd(new SyncGoop(id))
+}
+export const removeSyncPlayer = id => {
+  let syncGoop = _syncGoopMap[id]
+  delete _syncGoopMap[id]
+  syncGoop.removed = true
+}
+export const syncPlayerState = data => {
+  data.forEach(state => {
+    _syncGoopMap[state.id].sync(state)
+  })
+}
+
 export const viewX = () => _view.x
 export const viewY = () => _view.y
 export const viewWidth = () => _view.width
