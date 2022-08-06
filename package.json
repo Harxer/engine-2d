@@ -9,6 +9,6 @@
   "license": "ISC",
   "dependencies": {
     "@harxer/geometry": "1.0.0",
-    "hx-rtmesh-lib": "file:../HxRTMesh/lib"
+    "@harxer/rt-mesh-lib": "1.0.0"
   }
 }

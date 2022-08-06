@@ -6,8 +6,8 @@ import Player from './entities/player.js'
 import * as Engine from './engine.js'
 import InputReader, { InputInitializer } from './input.js'
 
-// import UserStateModel from 'hx-rtmesh-lib/models/UserState.js'
-import UserInputModel from 'hx-rtmesh-lib/models/UserInput.js'
+// import UserStateModel from '@harxer/rt-mesh-lib/models/UserState.js'
+import UserInputModel from '@harxer/rt-mesh-lib/models/UserInput.js'
 import SyncGoop from './entities/SyncGoop.js'
 
 // let userState = new UserStateModel()
