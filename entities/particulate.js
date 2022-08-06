@@ -1,5 +1,5 @@
 import EntityObject from "./entity.js"
-import { Vector } from 'hx-geometry'
+import { Vector } from '@harxer/geometry'
 import COLOR from "../color.js"
 
 export default class Particulate extends EntityObject {

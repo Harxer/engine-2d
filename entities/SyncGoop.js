@@ -1,5 +1,5 @@
 import Goop from "./goop.js"
-import { Vector, Segment } from 'hx-geometry'
+import { Vector, Segment } from '@harxer/geometry'
 
 const SYNC_LERP_TIME = 0.1 // sec
 

@@ -5,7 +5,7 @@
  *
  * @author Harrison Balogh
  */
- import { Vector } from 'hx-geometry'
+ import { Vector } from '@harxer/geometry'
 
 const UPDATE = 0
 const SYNC = 1

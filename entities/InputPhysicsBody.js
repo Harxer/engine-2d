@@ -1,4 +1,4 @@
-import { Vector, isZero } from 'hx-geometry'
+import { Vector, isZero } from '@harxer/geometry'
 import PhysicsBody from './PhysicsBody.js'
 import * as PhysicsBodyConstants from './PhysicsBody.js'
 

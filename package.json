@@ -1,16 +1,14 @@
 {
-  "name": "hx-engine",
+  "name": "@harxer/engine-2d",
   "version": "1.0.0",
-  "description": "Harxer JS graphic engine.",
+  "description": "Harxer JS graphic 2D engine.",
   "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "repository": "git@github.com:Harxer/engine-2d.git",
   "main": "world.js",
   "author": "Harrison Balogh",
   "license": "ISC",
   "dependencies": {
-    "hx-geometry": "file:../HxGeometry",
+    "@harxer/geometry": "1.0.0",
     "hx-rtmesh-lib": "file:../HxRTMesh/lib"
   }
 }

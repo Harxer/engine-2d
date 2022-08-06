@@ -1,6 +1,6 @@
 import EntityObject from './entity.js'
 import COLOR from '../color.js'
-import { Segment, Vector } from 'hx-geometry'
+import { Segment, Vector } from '@harxer/geometry'
 import PhysicsBody, * as PhysicsBodyConstants from './PhysicsBody.js'
 import * as EntityConstants from './entity.js'
 

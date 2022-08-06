@@ -1,4 +1,4 @@
-import { Point, Vector } from 'hx-geometry'
+import { Point, Vector } from '@harxer/geometry'
 
 export const COLLIDER_FILTER = {
   PLAYER: 1,
