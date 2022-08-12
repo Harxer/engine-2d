@@ -1,4 +1,4 @@
-import { Vector, isZero } from '@harxer/geometry'
+import { Vector, isZero, anglesMatch, boundAngle } from '@harxer/geometry'
 import PhysicsBody from './PhysicsBody.js'
 import * as PhysicsBodyConstants from './PhysicsBody.js'
 
@@ -10,7 +10,7 @@ export default class InputPhysicsBody extends PhysicsBody {
     super(x, y, PhysicsBodyConstants.COLLIDER_FILTER.PLAYER)
 
     this.INPUT_ACCELERATION_MAX = 9000
-    this.TURN_RATE = 0 // 10 * Math.PI // zero turnRate indicates instant turns
+    this.TURN_RATE = 8 * Math.PI // zero turnRate indicates instant turns
   }
 
   // handleCollisions() {

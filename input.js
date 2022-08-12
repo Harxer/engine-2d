@@ -179,6 +179,7 @@ const InputPlayerHandler = {
     if (key.down == 0) return // Key not pressed
 
     let dT = keyUpEvent.timeStamp - key.down // See handleKeyPress for keyDown time
+    if (dT <= 0) return // I guess?
 
     if (keyUpEvent.keyCode === InputReader.KEYCODE.RIGHT) { // positive x time indicates moving right
       InputPlayerHandler.bufferInputs.forEach(buffer => buffer.x += dT)

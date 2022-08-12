@@ -8,7 +8,7 @@ import InputReader, { InputInitializer } from './input.js'
 
 // import UserStateModel from '@harxer/rt-mesh-lib/models/UserState.js'
 import UserInputModel from '@harxer/rt-mesh-lib/models/UserInput.js'
-import SyncGoop from './entities/SyncGoop.js'
+import SyncGoop, { usePredictState } from './entities/SyncGoop.js'
 
 // let userState = new UserStateModel()
 let userInput = new UserInputModel()
@@ -18,6 +18,7 @@ let _canvasFg;
 let _contentContext;
 let _clippingContext;
 let _player = null
+let _playerSyncGoopId = undefined
 let _syncGoopMap = {}
 let _canvasFlush = true
 let _view = {
@@ -80,18 +81,24 @@ export const getPlayerInputSync = timestamp => userInput.sync(InputReader.player
 //   y: _player.position.y,
 //   angle: _player.rotation
 // })
-export const addSyncPlayer = id => {
+export const addSyncPlayer = (id, isSelf = false) => {
   if (_syncGoopMap[id]) return
   _syncGoopMap[id] = entityAdd(new SyncGoop(id))
+  if (isSelf) _playerSyncGoopId = id
 }
 export const removeSyncPlayer = id => {
   let syncGoop = _syncGoopMap[id]
   delete _syncGoopMap[id]
   syncGoop.removed = true
 }
+export function toggleCorrectDesync() {
+  correctDesync = !correctDesync
+  return correctDesync
+}
+let correctDesync = true
 export const syncPlayerState = data => {
-  data.forEach(state => {
-    _syncGoopMap[state.id].sync(state)
+  data.forEach(user => {
+    _syncGoopMap[user.id].sync(user.state, user.predictState)
   })
 }
 
@@ -127,6 +134,14 @@ function updateTick(delta, timestamp) {
   // }
 
   entityUpdate(delta)
+
+  if (correctDesync && _playerSyncGoopId) {
+    let user = _syncGoopMap[_playerSyncGoopId]
+    let x = usePredictState ? user.prev.predictedState.x : user.prev.state.x
+    let y = usePredictState ? user.prev.predictedState.y : user.prev.state.y
+    _player.physicsBody.position.x += (x - _player.physicsBody.position.x) * 0.05
+    _player.physicsBody.position.y += (y - _player.physicsBody.position.y) * 0.05
+  }
 
   // Apply world camera style
   CAMERA_STYLE.STATIC()
