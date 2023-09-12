@@ -29,6 +29,12 @@ let _syncTimeRemaining = 0
 let _disposeEvents = [] // id: int
 let _animationFrameId;
 
+/** Useful when capturing frames for a render. */
+let _constant_time_step_override = false
+let CONSTANT_TIME_STEP = 1000 / 60
+export const enableConstantTimeStep = _ => _constant_time_step_override = true
+export const disableConstantTimeStep = _ => _constant_time_step_override = false
+
 function update(updateTime) {
   // Cleanup disposed tick events
   _disposeEvents.forEach(id => {
@@ -40,11 +46,11 @@ function update(updateTime) {
   _disposeEvents = []
 
   // Tick events - pass with delta time and timestamp of event
-  _tickEvents.forEach(evt => evt.callback(Math.abs(updateTime - _lastUpdateTime) / 1000, updateTime))
+  _tickEvents.forEach(evt => evt.callback((_constant_time_step_override ? CONSTANT_TIME_STEP : Math.abs(updateTime - _lastUpdateTime)) / 1000, updateTime))
 
   // Render events
   _renderTimeRemaining -= (updateTime - _lastUpdateTime)
-  if (_renderTimeRemaining <= 0) {
+  if (_constant_time_step_override || _renderTimeRemaining <= 0) {
     _renderTimeRemaining += RENDER_HERTZ
     _renderEvents.forEach(renderEvent => renderEvent((updateTime - _lastRenderTime) / 1000))
     _lastRenderTime = updateTime
