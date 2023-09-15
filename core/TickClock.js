@@ -19,13 +19,15 @@ export const enableConstantTimeStep = _ => _constant_time_step_override = true
 export const disableConstantTimeStep = _ => _constant_time_step_override = false
 
 // Animation render API setup - vendor prefixes
-window.requestAnimFrame =
+if (typeof window !== "undefined") {
+  window.requestAnimFrame =
   window.requestAnimationFrame ||
   window.webkitRequestAnimationFrame ||
   window.mozRequestAnimationFrame ||
   window.oRequestAnimationFrame ||
   window.msRequestAnimationFrame ||
   (callback => window.setTimeout(callback, 1000 / 60))
+}
 
 /**
  * TickInterval object.
