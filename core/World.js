@@ -172,7 +172,7 @@ export function init(htmlCanvasElement) {
   InputInitializer.initInputPlayerHandler()
 
   // Setup tick clock
-  TickClock.addInterval('update',         0, updateTick)
-  TickClock.addInterval('render', 1000 / 60, renderTick)
+  TickClock.addInterval('update', updateTick, 0)
+  TickClock.addInterval('render', renderTick, 1000 / 60)
   TickClock.start()
 }

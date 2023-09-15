@@ -1,10 +1,10 @@
 /**
  * Add and remove callback events to low interval timers.
  *
- * Executes update tick events as fast as requestAnimationFrame allows.
- * Delta time passed to tick events.
+ * Executes tick events as fast as requestAnimationFrame allows.
+ * Delta time and current time passed to tick events.
  *
- * @usage TickClock.addTickEvent(() => {}); TickClock.start();
+ * @usage TickClock.addInterval('update', updateTick, 100)
  *
  * @author Harrison Balogh
  */
@@ -31,16 +31,16 @@ window.requestAnimFrame =
  * TickInterval object.
  *
  * @param {string} label - Unique label to identify tick interval.
- * @param {int} hertz - Target tick speed.
  * @param {function} callback - Initialize tick interval with callback
+ * @param {int} hertz - Target tick speed. Defaults to zero for faster tick rate.
  */
 class TickInterval {
-  constructor(label, hertz, callback = undefined) {
+  constructor(label, callback, hertz = 0) {
     this.label = label;
     this.hertz = hertz;
 
     /** Callbacks executed at target this.hertz increment */
-    this._callbacks = [/* { id: int, callback: Function} */];
+    this._callbacks = [callback /* { id: int, callback: Function} */];
     /** Callbacks that have been marked for removal and need to be cleaned up  */
     this._disposedCallbacks = [/* int */];
     /** Last time this tick executed callbacks */
@@ -49,11 +49,6 @@ class TickInterval {
     this._remainingTime = 0
     /** Time interval was paused */
     this._pauseTime = 0
-
-    // Optional initialization
-    if (callback !== undefined) {
-      this._callbacks.push(callback)
-    }
   }
 
   /**
@@ -152,14 +147,14 @@ function update(timeNow) {
  * Creates a tick interval with the given unique label
  *
  * @param {string} label - Unique label to identify tick interval.
- * @param {int} hertz - Target tick speed. Pass a zero for highest possible tick rate.
- * @param {function} callback - Optional callback to initialize interval with
+ * @param {function} callback - Callback to initialize interval with
+ * @param {int} hertz - Target tick speed. Default is zero for highest possible tick rate.
  */
-export function addInterval(label, hertz, callback = undefined) {
-  // Verify unique label
-  if (_tickIntervals.some(tickInterval => tickInterval.label == label)) return
+export function addInterval(label, callback, hertz = 0) {
+  if (_tickIntervals.some(tickInterval => tickInterval.label == label))
+    throw `Interval label "${label}" is already in use.`
 
-  _tickIntervals.push(new TickInterval(label, hertz, callback));
+  _tickIntervals.push(new TickInterval(label, callback, hertz));
 }
 
 /** Get tick interval running state. */
@@ -167,6 +162,7 @@ export const running = () => _running
 
 /** Start tick clock with given interval callbacks. */
 export function start() {
+  _constant_time_step_override = true;
   if (_animationFrameId) return
   _running = true
 
@@ -197,10 +193,11 @@ export async function flush() {
 
 // TODO test methods:
 
-/** Executes a single tick step without starting engine steps. Useful for testing. */
+/** Executes a single tick step without starting engine steps. Useful for testing or
+ * piping a render intervals to output. */
 export function stepTick() {
   if (_running) stop()
-  _renderTimeRemaining = 0
+  _constant_time_step_override = true;
   window.requestAnimationFrame(update)
 }
 
