@@ -3,6 +3,8 @@ import { Polygon, Point, Segment } from '@harxer/geometry';
 import getRoute from './Pathfinding.js'
 import getTriangulatedGraph from './Triangulation.js'
 
+/** Maintains a context of blockers that have been triangulated and pathfinding through this graph. */
+
 // === Blocker construction
 /** Temporary vrtices to build a new blocker. */
 let constructingVertices = [];
@@ -18,7 +20,8 @@ let defaultJsonLayoutUrl = "javascript/Layout2D/layout_default.json";
 // === Triangulation
 /** Track staleness of triangulation graph, reset when blockers are added */
 let _needsTriangulation = true
-export let triangulationTriangles = undefined
+export let triangulationTriangles = []
+export const getTriangulationGraph = _ => [...triangulationTriangles]
 // let pathfindingRoute = []
 // let routing = undefined
 // let IS_BOUNDS_BLOCKER = true
@@ -141,7 +144,7 @@ export function clearConstruction() {
   constructingCcw = false
 }
 
-export function constructionRender(context) {
+export function renderConstruction(context) {
   // Draw postprocessed blocker
   blockers.forEach(blocker => {
     if (blocker.polygon === undefined) return
@@ -286,7 +289,7 @@ export function route(origin, destination) {
  * Ensure triangles are generated or regenerated if the layout was changed between the last triangulation
  */
 function getTriangulation() {
-  if (triangulationTriangles === undefined || _needsTriangulation) {
+  if (_needsTriangulation) {
     let holePolygons = []
     blockers.forEach(holeBlocker => {
       if (holeBlocker == boundsBlocker) return
