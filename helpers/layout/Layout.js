@@ -3,35 +3,38 @@ import { Polygon, Point, Segment } from '@harxer/geometry';
 import getRoute from './Pathfinding.js'
 import getTriangulatedGraph from './Triangulation.js'
 
-let blockers = [];
-let constructingVertices = []; // Used by editMode
+// === Blocker construction
+/** Temporary vrtices to build a new blocker. */
+let constructingVertices = [];
+/** Currennt state of in-progress blocker construction concavity, only used for visualization */
 let constructingCcw = false
-let needsTriangulation = true
-let triangulationTriangles = undefined
-let pathfindingRoute = []
-let routing = undefined
-let IS_BOUNDS_BLOCKER = true
+
+// === Layout management
+export let boundsBlocker = undefined;
+let blockers = [];
+export const getHoles = _ => [...blockers];
 let defaultJsonLayoutUrl = "javascript/Layout2D/layout_default.json";
-export let bounds = {
-  blocker: undefined,
-  width: undefined,
-  height: undefined,
-  xInset: undefined,
-  yInset: undefined
-}
+
+// === Triangulation
+/** Track staleness of triangulation graph, reset when blockers are added */
+let _needsTriangulation = true
+export let triangulationTriangles = undefined
+// let pathfindingRoute = []
+// let routing = undefined
+// let IS_BOUNDS_BLOCKER = true
+// export let bounds = {
+  //   blocker: undefined,
+  //   width: undefined,
+  //   height: undefined,
+  //   xInset: undefined,
+  //   yInset: undefined
+  //
 
 export let optimizeTriangulation = true
 export function triangulationOptimized(val) {
+  optimizeTriangulation = val
   if (val != optimizeTriangulation) {
-    needsTriangulation = true
-    optimizeTriangulation = val
-  }
-}
-
-export let visibleTriangulation = false
-export function triangulationVisible(val) {
-  if (val != visibleTriangulation) {
-    visibleTriangulation = val
+    _needsTriangulation = true
   }
 }
 
@@ -59,21 +62,23 @@ export function newBlocker(vertices, isBoundsBlocker = false) {
     }
   }
 
-  needsTriangulation = true
-  blockers.push(new Blocker(newPolygon, originalVertices));
+  _needsTriangulation = true
+  let newBlocker = new Blocker(newPolygon, originalVertices);
+  blockers.push(newBlocker);
   if (isBoundsBlocker) {
     // Assumes the first blocker (bounds blocker) is a square. TODO - update
-    bounds.blocker = blockers[blockers.length - 1]
-    bounds.xInset = newPolygon.vertices[0].x
-    bounds.yInset = newPolygon.vertices[0].y
-    bounds.width = newPolygon.vertices[3].x - bounds.xInset
-    bounds.height = newPolygon.vertices[1].y - bounds.yInset
+    boundsBlocker = newBlocker;
+    // bounds.xInset = newPolygon.vertices[0].x
+    // bounds.yInset = newPolygon.vertices[0].y
+    // bounds.width = newPolygon.vertices[3].x - bounds.xInset
+    // bounds.height = newPolygon.vertices[1].y - bounds.yInset
   }
 }
+
 /** Returns removal count */
 function deleteBlocker(blockerIndex) {
-  needsTriangulation = true
-  if (blockers[blockerIndex] === bounds.blocker) bounds.blocker = undefined
+  _needsTriangulation = true
+  if (blockers[blockerIndex] === boundsBlocker) boundsBlocker = undefined
   return blockers.splice(blockerIndex, 1).length;
 }
 
@@ -118,7 +123,7 @@ export function addConstructionPoint(p) {
 }
 
 export function finishConstruction(p) {
-  if (constructingVertices.length > 2) newBlocker(constructingVertices, bounds.blocker === undefined)
+  if (constructingVertices.length > 2) newBlocker(constructingVertices, boundsBlocker === undefined)
   else if (constructingVertices.length == 0 && p !== undefined) {
     // Delete blocker if contains right click
     for (let b = 0; b < blockers.length; b++) {
@@ -256,80 +261,77 @@ export function constructionRender(context) {
 //   return pierce
 // }
 
-export function route(origin, destination, logged = true) {
+/** Excludes origin when return array of points arriving at destination point, avoiding blockers. */
+export function route(origin, destination) {
   // move origin and destination outside of any blockers
   blockers.forEach(blocker => {
     origin = blocker.polygon.closestPointOutsideFrom(origin)
     destination = blocker.polygon.closestPointOutsideFrom(destination)
   })
 
-  routing = {origin: origin, destination: destination}
-  let route = getRoute(getTriangulation(), origin, destination, logged)
+  // routing = {origin: origin, destination: destination}
+  let route = getRoute(getTriangulation(), origin, destination)
 
-  let routePolygons = (route.route || []).map(r => r.polygon)
-  triangulationTriangles.forEach(triangle => triangle.highlighted = routePolygons.includes(triangle))
+  // let routePolygons = (route.triangles || []).map(r => r.polygon)
+  // triangulationTriangles.forEach(triangle => triangle.highlighted = routePolygons.includes(triangle))
 
-  let pathBuilder = []
-  for (let p = 1; p < (route.path || []).length; p++) {
-    pathBuilder.push(new Segment(route.path[p-1], route.path[p]))
+  if (!route.path || !route.path.length) {
+    return [];
   }
-  pathfindingRoute = pathBuilder
+  return route.path.slice(1); // omit origin
+  // pathfindingRoute = pathBuilder
 }
 
 /**
  * Ensure triangles are generated or regenerated if the layout was changed between the last triangulation
  */
 function getTriangulation() {
-  if (triangulationTriangles === undefined || needsTriangulation) {
+  if (triangulationTriangles === undefined || _needsTriangulation) {
     let holePolygons = []
     blockers.forEach(holeBlocker => {
-      if (holeBlocker == bounds.blocker) return
+      if (holeBlocker == boundsBlocker) return
       holePolygons.push(holeBlocker.polygon)
     })
-    triangulationTriangles = getTriangulatedGraph(bounds.blocker, holePolygons)
-    needsTriangulation = false
-    if (routing !== undefined) route(routing.origin, routing.destination)
+    triangulationTriangles = getTriangulatedGraph(boundsBlocker, holePolygons)
+    _needsTriangulation = false
+    // if (routing !== undefined) route(routing.origin, routing.destination)
   }
 
   return triangulationTriangles
 }
 
 export function renderTriangulation(context) {
-  getTriangulation()
+  triangulationTriangles.forEach(polygon => {
+    context.strokeStyle = "rgba(50, 50, 200, 0.2)"
+    context.fillStyle = "rgba(50, 50, 200, 0.02)"
+    if (polygon.highlighted !== undefined && polygon.highlighted) {
+      context.fillStyle = "rgba(50, 50, 200, 0.2)"
+    }
+    context.beginPath();
+    context.moveTo(polygon.vertices[0].x, polygon.vertices[0].y);
+    polygon.vertices.forEach(vertex => context.lineTo(vertex.x, vertex.y))
+    context.lineTo(polygon.vertices[0].x, polygon.vertices[0].y);
+    if (!polygon.counterclockwise) context.fill()
+    context.stroke();
+  });
 
-  if (visibleTriangulation) {
-    triangulationTriangles.forEach(polygon => {
-      context.strokeStyle = "rgba(50, 50, 200, 0.2)"
-      context.fillStyle = "rgba(50, 50, 200, 0.02)"
-      if (polygon.highlighted !== undefined && polygon.highlighted) {
-        context.fillStyle = "rgba(50, 50, 200, 0.2)"
-      }
-      context.beginPath();
-      context.moveTo(polygon.vertices[0].x, polygon.vertices[0].y);
-      polygon.vertices.forEach(vertex => context.lineTo(vertex.x, vertex.y))
-      context.lineTo(polygon.vertices[0].x, polygon.vertices[0].y);
-      if (!polygon.counterclockwise) context.fill()
-      context.stroke();
-    });
-  }
+  // pathfindingRoute.forEach(segment => {
+  //   context.strokeStyle = "rgb(50, 50, 50)"
+  //   context.fillStyle = "rgb(100, 100, 100)"
 
-  pathfindingRoute.forEach(segment => {
-    context.strokeStyle = "rgb(50, 50, 50)"
-    context.fillStyle = "rgb(100, 100, 100)"
-
-    context.beginPath()
-    context.arc(segment.a().x, segment.a().y, 2, 0, 2 * Math.PI, false)
-    context.stroke()
-    context.beginPath()
-    context.arc(segment.b().x, segment.b().y, 2, 0, 2 * Math.PI, false)
-    context.fill()
-    context.beginPath()
-    context.moveTo(segment.a().x, segment.a().y)
-    context.lineTo(segment.b().x, segment.b().y)
-    context.stroke()
-    // context.fillText(segment.a().logString(), segment.a().x+5, segment.a().y - 5)
-    // context.fillText(segment.b().logString(), segment.b().x+5, segment.b().y - 5)
-  })
+  //   context.beginPath()
+  //   context.arc(segment.a().x, segment.a().y, 2, 0, 2 * Math.PI, false)
+  //   context.stroke()
+  //   context.beginPath()
+  //   context.arc(segment.b().x, segment.b().y, 2, 0, 2 * Math.PI, false)
+  //   context.fill()
+  //   context.beginPath()
+  //   context.moveTo(segment.a().x, segment.a().y)
+  //   context.lineTo(segment.b().x, segment.b().y)
+  //   context.stroke()
+  //   // context.fillText(segment.a().logString(), segment.a().x+5, segment.a().y - 5)
+  //   // context.fillText(segment.b().logString(), segment.b().x+5, segment.b().y - 5)
+  // })
 }
 
 export function saveToCookies() {
@@ -346,8 +348,8 @@ export function serialized() {
 
 export function reset() {
   blockers = []
-  needsTriangulation = true
-  bounds.blocker = undefined
+  _needsTriangulation = true
+  boundsBlocker = undefined
   setCookie('layoutData', '', 0)
   loadFromServer()
 }
@@ -363,7 +365,7 @@ function loadFromCookies() {
   let cookieData = getCookie('layoutData')
   if (cookieData !== '') {
     let blockers = JSON.parse(cookieData)
-    blockers.forEach(b => newBlocker(b.map(v => new Point(v[0], v[1])), bounds.blocker === undefined))
+    blockers.forEach(b => newBlocker(b.map(v => new Point(v[0], v[1])), boundsBlocker === undefined))
     return true
   }
   return false
@@ -375,7 +377,7 @@ function loadFromServer() {
   xmlhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
       let blockers = JSON.parse(this.responseText)
-      blockers.forEach(b => newBlocker(b.map(p => new Point(p[0], p[1])), bounds.blocker === undefined))
+      blockers.forEach(b => newBlocker(b.map(p => new Point(p[0], p[1])), boundsBlocker === undefined))
 
       saveToCookies()
     }

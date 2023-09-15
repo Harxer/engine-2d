@@ -5,7 +5,7 @@ import { Segment, Polygon, Point } from '@harxer/geometry'
  * @param {[Polygon]} graph Edge joined array of polygons. Polygon edges hold references to neighboring polygons.
  * @param {Point} origin Start position
  * @param {Point} destination Goal position
- * @returns {[{point: Point, polygon: Polygon}]} shortest line segments through route
+ * @returns {{path: [Point], triangles: [Polygon]}} shortest line segments through route
  */
 export default function getRoute(graph, origin, destination) {
   // log(`Routing ${origin.logString()} to ${destination.logString()}`, [origin, destination], true)
@@ -63,7 +63,7 @@ export default function getRoute(graph, origin, destination) {
     current = current.from.node
   }
   // log(`Route from ${origin.logString()} to ${destination.logString()}`, route.map(r => r.polygon))
-  return {path: createShortestPath(route.reverse(), origin, destination), route: route};
+  return {path: createShortestPath(route.reverse(), origin, destination), triangles: route};
 }
 
 // ======== INTERNAL Helpers =========
