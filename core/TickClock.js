@@ -12,6 +12,12 @@
 /** TODO: Update ticks will not be passed time deltas longer than this value. */
 let TICK_HERTZ_MIN = 1000 / 60
 
+/** Global hertz override for all intervals. Useful when capturing frames for a render. */
+let _constant_time_step_override = false
+let CONSTANT_TIME_STEP = 1000 / 60
+export const enableConstantTimeStep = _ => _constant_time_step_override = true
+export const disableConstantTimeStep = _ => _constant_time_step_override = false
+
 // Animation render API setup - vendor prefixes
 window.requestAnimFrame =
   window.requestAnimationFrame ||
@@ -101,15 +107,16 @@ class TickInterval {
         this._callbacks.splice(callbackIndex, 1)
       }
     })
-    this._disposedCallbacks = []
+    this._disposedCallbacks = [];
 
     // Process time difference
     this._remainingTime -= Math.min((timeNow - this._lastExecutionTime), this.hertz);
-    if (this._remainingTime <= 0) {
+    if (_constant_time_step_override || this._remainingTime <= 0) {
       this._remainingTime += this.hertz;
       // Execute tick callbacks
       // TODO check necessity of: let dT = Math.min(Math.abs(updateTime - _lastUpdateTime), TICK_HERTZ_MIN)
-      this._callbacks.forEach(callback => callback((timeNow - this._lastExecutionTime) / 1000, timeNow))
+      let delta = _constant_time_step_override ? CONSTANT_TIME_STEP : Math.abs(timeNow - this._lastExecutionTime);
+      this._callbacks.forEach(callback => callback(delta / 1000, timeNow));
       this._lastExecutionTime = timeNow;
     }
   }
