@@ -1,4 +1,4 @@
-import { Segment, Polygon, Point } from '../../node_modules/@harxer/geometry/geometry.js'
+import { Segment, Polygon, Point } from '@harxer/geometry'
 
 /**
  * Apply A* pathfinding to graph.

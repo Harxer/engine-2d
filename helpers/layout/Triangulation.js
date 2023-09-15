@@ -1,4 +1,4 @@
-import { Segment, Vector, Polygon, Point } from '../../node_modules/@harxer/geometry/geometry.js'
+import { Segment, Vector, Polygon, Point } from '@harxer/geometry'
 import {optimizeTriangulation as optimize} from './Layout.js'
 import Blocker from './Blocker.js'
 

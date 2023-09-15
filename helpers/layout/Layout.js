@@ -1,8 +1,7 @@
 import Blocker from './Blocker.js'
-import { Polygon, Point, Segment } from '../../node_modules/@harxer/geometry/geometry.js';
+import { Polygon, Point, Segment } from '@harxer/geometry';
 import getRoute from './Pathfinding.js'
 import getTriangulatedGraph from './Triangulation.js'
-import { mouse } from '../core.js'
 
 let blockers = [];
 let constructingVertices = []; // Used by editMode
@@ -83,29 +82,39 @@ export function renderBlockers(context) {
 }
 
 export function addConstructionPoint(p) {
-  if (constructingVertices.length == 0) {
-    constructingVertices.push(p);
-  } else {
-    let mouseDistToStartSqrd = Segment.distanceSqrd(mouse.loc, constructingVertices[0])
-    if (constructingVertices.length > 2) {
-      if (mouseDistToStartSqrd < 64) {
-        finishConstruction()
-        return
-      } else {
-        constructingVertices.push(p);
-      }
-    } else if (mouseDistToStartSqrd > 64) {
-      constructingVertices.push(p);
-    }
+  constructingVertices.push(p);
 
-    let averageSlope = 0
-    for (let i = 0; i < constructingVertices.length; i++) {
-      let v = constructingVertices[i]
-      let vNext = constructingVertices[(i + 1) % constructingVertices.length]
-      averageSlope += (vNext.x - v.x) * (vNext.y + v.y)
-    }
-    constructingCcw = (averageSlope > 0)
+  let averageSlope = 0
+  for (let i = 0; i < constructingVertices.length; i++) {
+    let v = constructingVertices[i]
+    let vNext = constructingVertices[(i + 1) % constructingVertices.length]
+    averageSlope += (vNext.x - v.x) * (vNext.y + v.y)
   }
+  constructingCcw = (averageSlope > 0)
+
+  // if (constructingVertices.length == 0) {
+  //   constructingVertices.push(p);
+  // } else {
+  //   let mouseDistToStartSqrd = Segment.distanceSqrd(mouse.loc, constructingVertices[0])
+  //   if (constructingVertices.length > 2) {
+  //     if (mouseDistToStartSqrd < 64) {
+  //       finishConstruction()
+  //       return
+  //     } else {
+  //       constructingVertices.push(p);
+  //     }
+  //   } else if (mouseDistToStartSqrd > 64) {
+  //     constructingVertices.push(p);
+  //   }
+
+  //   let averageSlope = 0
+  //   for (let i = 0; i < constructingVertices.length; i++) {
+  //     let v = constructingVertices[i]
+  //     let vNext = constructingVertices[(i + 1) % constructingVertices.length]
+  //     averageSlope += (vNext.x - v.x) * (vNext.y + v.y)
+  //   }
+  //   constructingCcw = (averageSlope > 0)
+  // }
 }
 
 export function finishConstruction(p) {
@@ -161,17 +170,17 @@ export function constructionRender(context) {
   });
 
   // Draw construction vertices
-  let mouseDistToStartSqrd = undefined
-  if (constructingVertices.length > 0) {
-    mouseDistToStartSqrd = Segment.distanceSqrd(mouse.loc, constructingVertices[0])
-  }
+  // let mouseDistToStartSqrd = undefined
+  // if (constructingVertices.length > 0) {
+  //   mouseDistToStartSqrd = Segment.distanceSqrd(mouse.loc, constructingVertices[0])
+  // }
   context.strokeStyle = constructingCcw ? "Blue" : "Red";
   context.fillStyle = constructingCcw ? "Blue" : "Red";
   context.font = '14px sans-serif';
   for (let c = 0; c < constructingVertices.length; c++) {
     let vertex = constructingVertices[c];
     if (c == 0) {
-      if (constructingVertices.length < 2 || mouseDistToStartSqrd > 64) {
+      if (constructingVertices.length < 2) { // || mouseDistToStartSqrd > 64
         context.fillText(vertex.logString(), vertex.x+5, vertex.y-5);
       } else {
         context.beginPath();
@@ -191,18 +200,18 @@ export function constructionRender(context) {
     if (c == constructingVertices.length - 1 ) {
       context.beginPath();
       context.moveTo(vertex.x, vertex.y);
-      if (mouseDistToStartSqrd > 64) {
-        context.lineTo(mouse.loc.x, mouse.loc.y);
-      } else {
+      // if (mouseDistToStartSqrd > 64) {
+      //   context.lineTo(mouse.loc.x, mouse.loc.y);
+      // } else {
         context.lineTo(constructingVertices[0].x, constructingVertices[0].y);
-      }
+      // }
       context.stroke();
 
-      if (mouseDistToStartSqrd > 64) {
-        context.beginPath();
-        context.arc(mouse.loc.x, mouse.loc.y, 3, 0, 2 * Math.PI, false);
-        context.stroke();
-      }
+      // if (mouseDistToStartSqrd > 64) {
+      //   context.beginPath();
+      //   context.arc(mouse.loc.x, mouse.loc.y, 3, 0, 2 * Math.PI, false);
+      //   context.stroke();
+      // }
     }
 
     context.beginPath();
