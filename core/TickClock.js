@@ -31,7 +31,7 @@ window.requestAnimFrame =
  * TickInterval object.
  *
  * @param {string} label - Unique label to identify tick interval.
- * @param {function} callback - Initialize tick interval with callback
+ * @param {function|[function]} callback - Callback(s) to initialize interval with. Can be a singular function or array of functions
  * @param {int} hertz - Target tick speed. Defaults to zero for faster tick rate.
  */
 class TickInterval {
@@ -40,7 +40,7 @@ class TickInterval {
     this.hertz = hertz;
 
     /** Callbacks executed at target this.hertz increment */
-    this._callbacks = [callback /* { id: int, callback: Function} */];
+    this._callbacks = Array.isArray(callback) ? [...callback] : [callback ]; /* [{ id: int, callback: Function}] */
     /** Callbacks that have been marked for removal and need to be cleaned up  */
     this._disposedCallbacks = [/* int */];
     /** Last time this tick executed callbacks */
@@ -147,7 +147,7 @@ function update(timeNow) {
  * Creates a tick interval with the given unique label
  *
  * @param {string} label - Unique label to identify tick interval.
- * @param {function} callback - Callback to initialize interval with
+ * @param {function|[function]} callback - Callback(s) to initialize interval with. Can be a singular function or array of functions
  * @param {int} hertz - Target tick speed. Default is zero for highest possible tick rate.
  */
 export function addInterval(label, callback, hertz = 0) {
@@ -155,6 +155,38 @@ export function addInterval(label, callback, hertz = 0) {
     throw `Interval label "${label}" is already in use.`
 
   _tickIntervals.push(new TickInterval(label, callback, hertz));
+}
+
+/**
+ * Adds callback to tick interval by label and returns GUID for the tick event.
+ *
+ * @param {function} callback - To add to interval callbacks.
+ *
+ * @returns {int} ID of the callback.
+ */
+export function addCallback(label, callback) {
+  let tickInterval = _tickIntervals.find(tickInterval => tickInterval.label == label)
+  if (tickInterval === undefined) {
+    throw `Interval label "${label}" does not exist.`
+  }
+
+  return tickInterval.addCallback(callback);
+}
+
+/**
+ * Removes callback from tick interval by label.
+ *
+ * Disposed callbacks are not called again and get cleaned on the next tick.
+ *
+ * @param {int} id ID returned from an `addCallback`
+ */
+export function removeCallback(label, id) {
+  let tickInterval = _tickIntervals.find(tickInterval => tickInterval.label == label)
+  if (tickInterval === undefined) {
+    throw `Interval label "${label}" does not exist.`
+  }
+
+  tickInterval.removeCallback(id)
 }
 
 /** Get tick interval running state. */
