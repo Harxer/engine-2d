@@ -22,6 +22,7 @@ let defaultJsonLayoutUrl = "javascript/Layout2D/layout_default.json";
 let _needsTriangulation = true
 export let triangulationTriangles = []
 export const getTriangulationGraph = _ => [...triangulationTriangles]
+export const forceTriangulate = getTriangulation;
 // let pathfindingRoute = []
 // let routing = undefined
 // let IS_BOUNDS_BLOCKER = true
