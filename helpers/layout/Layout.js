@@ -10,6 +10,10 @@ import getTriangulatedGraph from './Triangulation.js'
 let constructingVertices = [];
 /** Currennt state of in-progress blocker construction concavity, only used for visualization */
 let constructingCcw = false
+let constructionMouse = undefined;
+const usingMouseMoveHandler = _ => constructionMouse !== undefined;
+const constructingBlocker = _ => constructingVertices.length > 0;
+let CONSTRUCTION_SNAP_DISTANCE = 8; // pixels
 
 // === Layout management
 export let boundsBlocker = undefined;
@@ -23,16 +27,6 @@ let _needsTriangulation = true
 export let triangulationTriangles = []
 export const getTriangulationGraph = _ => [...triangulationTriangles]
 export const forceTriangulate = getTriangulation;
-// let pathfindingRoute = []
-// let routing = undefined
-// let IS_BOUNDS_BLOCKER = true
-// export let bounds = {
-  //   blocker: undefined,
-  //   width: undefined,
-  //   height: undefined,
-  //   xInset: undefined,
-  //   yInset: undefined
-  //
 
 export let optimizeTriangulation = true
 export function triangulationOptimized(val) {
@@ -72,10 +66,6 @@ export function newBlocker(vertices, isBoundsBlocker = false) {
   if (isBoundsBlocker) {
     // Assumes the first blocker (bounds blocker) is a square. TODO - update
     boundsBlocker = newBlocker;
-    // bounds.xInset = newPolygon.vertices[0].x
-    // bounds.yInset = newPolygon.vertices[0].y
-    // bounds.width = newPolygon.vertices[3].x - bounds.xInset
-    // bounds.height = newPolygon.vertices[1].y - bounds.yInset
   }
 }
 
@@ -91,8 +81,19 @@ export function renderBlockers(context) {
 }
 
 export function addConstructionPoint(p) {
+  // If using a mouse listener, snapping is enabled
+  if (usingMouseMoveHandler() && constructingVertices.length >= 3) {
+    let distMouseToStartSqrd = Segment.distanceSqrd(constructionMouse, constructingVertices[0])
+    // Complete construction if within snap distance
+    if (distMouseToStartSqrd < CONSTRUCTION_SNAP_DISTANCE * CONSTRUCTION_SNAP_DISTANCE) {
+      finishConstruction(p);
+      return;
+    }
+  }
+
   constructingVertices.push(p);
 
+  // Update current construction CCW visualizer with current `constructingVertices`. */
   let averageSlope = 0
   for (let i = 0; i < constructingVertices.length; i++) {
     let v = constructingVertices[i]
@@ -100,49 +101,73 @@ export function addConstructionPoint(p) {
     averageSlope += (vNext.x - v.x) * (vNext.y + v.y)
   }
   constructingCcw = (averageSlope > 0)
-
-  // if (constructingVertices.length == 0) {
-  //   constructingVertices.push(p);
-  // } else {
-  //   let mouseDistToStartSqrd = Segment.distanceSqrd(mouse.loc, constructingVertices[0])
-  //   if (constructingVertices.length > 2) {
-  //     if (mouseDistToStartSqrd < 64) {
-  //       finishConstruction()
-  //       return
-  //     } else {
-  //       constructingVertices.push(p);
-  //     }
-  //   } else if (mouseDistToStartSqrd > 64) {
-  //     constructingVertices.push(p);
-  //   }
-
-  //   let averageSlope = 0
-  //   for (let i = 0; i < constructingVertices.length; i++) {
-  //     let v = constructingVertices[i]
-  //     let vNext = constructingVertices[(i + 1) % constructingVertices.length]
-  //     averageSlope += (vNext.x - v.x) * (vNext.y + v.y)
-  //   }
-  //   constructingCcw = (averageSlope > 0)
-  // }
 }
 
-export function finishConstruction(p) {
-  if (constructingVertices.length > 2) newBlocker(constructingVertices, boundsBlocker === undefined)
-  else if (constructingVertices.length == 0 && p !== undefined) {
-    // Delete blocker if contains right click
-    for (let b = 0; b < blockers.length; b++) {
-      if (blockers[b].polygon.containsPoint(p)) {
-        deleteBlocker(b)
-        break
+/** Handles mouse clicks with standardized control behavior:
+ *
+ * If left mouse button, a construction point is added. A left mouse
+ * will finish a construction if constructionMouseMoveHandler is being
+ * fed mouse location data and the mouse is close enough to the starting
+ * construction vertex.
+ * For right mouse button, if constructionMouseMoveHandler is used, a right
+ * click will undo the last placed point if construction has started else
+ * it will attempt to delete any blocker that the mouse is highlighted over.
+ * If not using mouse location handler, right click will finish construction.
+ */
+export function constructionMouseSmartClickHandler(x, y, button) {
+  let p = {x, y}
+
+  const LEFT_MOUSE_BUTTON = 0;
+  const RIGHT_MOUSE_BUTTON = 0;
+
+  if (LEFT_MOUSE_BUTTON === button) {
+    addConstructionPoint(p);
+  }
+
+  if (RIGHT_MOUSE_BUTTON === button) {
+    if (usingMouseMoveHandler() && constructingBlocker()) {
+      undoConstructionPoint();
+    }
+    else if (!usingMouseMoveHandler() && constructingVertices.length >= 3) {
+      finishConstruction();
+    } else {
+      // Delete blocker if contains right click
+      for (let b = 0; b < blockers.length; b++) {
+        if (blockers[b].polygon.containsPoint(p)) {
+          deleteBlocker(b);
+          break
+        }
       }
     }
   }
-  clearConstruction()
+}
+
+/** Removes the last placed construction vertex. */
+export function undoConstructionPoint() {
+  constructingVertices.pop();
+}
+
+/** Finishes polygon if viable triangle created, else does nothing. */
+export function finishConstruction() {
+  if (constructingVertices.length >= 3) {
+    newBlocker(constructingVertices, boundsBlocker === undefined)
+    clearConstruction()
+  }
 }
 
 export function clearConstruction() {
   constructingVertices = [];
   constructingCcw = false
+  constructionMouse = undefined;
+}
+
+/** Handle mouse update. Allows for snapping when creating blockers */
+export function constructionMouseMoveHandler(x, y) {
+  if (constructingVertices.length === 0) {
+    constructionMouse = undefined;
+    return;
+  }
+  constructionMouse = {x, y}
 }
 
 export function renderConstruction(context) {
@@ -179,9 +204,9 @@ export function renderConstruction(context) {
   });
 
   // Draw construction vertices
-  // let mouseDistToStartSqrd = undefined
+  // let distMouseToStartSqrd = undefined
   // if (constructingVertices.length > 0) {
-  //   mouseDistToStartSqrd = Segment.distanceSqrd(mouse.loc, constructingVertices[0])
+  //   distMouseToStartSqrd = Segment.distanceSqrd(mouse.loc, constructingVertices[0])
   // }
   context.strokeStyle = constructingCcw ? "Blue" : "Red";
   context.fillStyle = constructingCcw ? "Blue" : "Red";
@@ -189,7 +214,7 @@ export function renderConstruction(context) {
   for (let c = 0; c < constructingVertices.length; c++) {
     let vertex = constructingVertices[c];
     if (c == 0) {
-      if (constructingVertices.length < 2) { // || mouseDistToStartSqrd > 64
+      if (constructingVertices.length < 2) { // || distMouseToStartSqrd > 64
         context.fillText(vertex.logString(), vertex.x+5, vertex.y-5);
       } else {
         context.beginPath();
@@ -209,14 +234,14 @@ export function renderConstruction(context) {
     if (c == constructingVertices.length - 1 ) {
       context.beginPath();
       context.moveTo(vertex.x, vertex.y);
-      // if (mouseDistToStartSqrd > 64) {
+      // if (distMouseToStartSqrd > 64) {
       //   context.lineTo(mouse.loc.x, mouse.loc.y);
       // } else {
         context.lineTo(constructingVertices[0].x, constructingVertices[0].y);
       // }
       context.stroke();
 
-      // if (mouseDistToStartSqrd > 64) {
+      // if (distMouseToStartSqrd > 64) {
       //   context.beginPath();
       //   context.arc(mouse.loc.x, mouse.loc.y, 3, 0, 2 * Math.PI, false);
       //   context.stroke();
@@ -368,8 +393,9 @@ export function load() {
 function loadFromCookies() {
   let cookieData = getCookie('layoutData')
   if (cookieData !== '') {
-    let blockers = JSON.parse(cookieData)
-    blockers.forEach(b => newBlocker(b.map(v => new Point(v[0], v[1])), boundsBlocker === undefined))
+    blockers = [];
+    let blockersJson = JSON.parse(cookieData)
+    blockersJson.forEach(b => newBlocker(b.map(v => new Point(v[0], v[1])), boundsBlocker === undefined))
     return true
   }
   return false
@@ -380,8 +406,12 @@ function loadFromServer() {
   let xmlhttp = new XMLHttpRequest();
   xmlhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
-      let blockers = JSON.parse(this.responseText)
-      blockers.forEach(b => newBlocker(b.map(p => new Point(p[0], p[1])), boundsBlocker === undefined))
+      if (!this.responseText) {
+        return;
+      }
+      blockers = [];
+      let blockersJson = JSON.parse(this.responseText)
+      blockersJson.forEach(b => newBlocker(b.map(p => new Point(p[0], p[1])), boundsBlocker === undefined))
 
       saveToCookies()
     }
