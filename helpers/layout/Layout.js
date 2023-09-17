@@ -115,7 +115,7 @@ export function addConstructionPoint(p) {
  * If not using mouse location handler, right click will finish construction.
  */
 export function constructionMouseSmartClickHandler(x, y, button) {
-  let p = {x, y}
+  let p = new Point(x, y);
 
   const LEFT_MOUSE_BUTTON = 0;
   const RIGHT_MOUSE_BUTTON = 0;
