@@ -20,6 +20,7 @@ export let boundsBlocker = undefined;
 let blockers = [];
 export const getHoles = _ => [...blockers];
 let defaultJsonLayoutUrl = "javascript/Layout2D/layout_default.json";
+export const setDefaultJsonLayoutUrl = url => defaultJsonLayoutUrl = url;
 
 // === Triangulation
 /** Track staleness of triangulation graph, reset when blockers are added */
@@ -118,7 +119,7 @@ export function constructionMouseSmartClickHandler(x, y, button) {
   let p = new Point(x, y);
 
   const LEFT_MOUSE_BUTTON = 0;
-  const RIGHT_MOUSE_BUTTON = 0;
+  const RIGHT_MOUSE_BUTTON = 1;
 
   if (LEFT_MOUSE_BUTTON === button) {
     addConstructionPoint(p);
