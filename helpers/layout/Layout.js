@@ -119,7 +119,7 @@ export function constructionMouseSmartClickHandler(x, y, button) {
   let p = new Point(x, y);
 
   const LEFT_MOUSE_BUTTON = 0;
-  const RIGHT_MOUSE_BUTTON = 1;
+  const RIGHT_MOUSE_BUTTON = 2;
 
   if (LEFT_MOUSE_BUTTON === button) {
     addConstructionPoint(p);
