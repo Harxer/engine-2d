@@ -12,6 +12,7 @@ let constructingVertices = [];
 let constructingCcw = false
 let constructionMouse = undefined;
 const usingMouseMoveHandler = _ => constructionMouse !== undefined;
+let constructionSnapping = true;
 const constructingBlocker = _ => constructingVertices.length > 0;
 let CONSTRUCTION_SNAP_DISTANCE = 8; // pixels
 
@@ -168,7 +169,12 @@ export function constructionMouseMoveHandler(x, y) {
     constructionMouse = undefined;
     return;
   }
+
   constructionMouse = {x, y}
+
+  // If using a mouse listener, snapping is enabled
+  let distMouseToStartSqrd = Segment.distanceSqrd(constructionMouse, constructingVertices[0])
+  constructionSnapping = distMouseToStartSqrd < CONSTRUCTION_SNAP_DISTANCE * CONSTRUCTION_SNAP_DISTANCE;
 }
 
 export function renderConstruction(context) {
@@ -204,54 +210,55 @@ export function renderConstruction(context) {
     });
   });
 
-  // Draw construction vertices
-  // let distMouseToStartSqrd = undefined
-  // if (constructingVertices.length > 0) {
-  //   distMouseToStartSqrd = Segment.distanceSqrd(mouse.loc, constructingVertices[0])
-  // }
   context.strokeStyle = constructingCcw ? "Blue" : "Red";
   context.fillStyle = constructingCcw ? "Blue" : "Red";
   context.font = '14px sans-serif';
   for (let c = 0; c < constructingVertices.length; c++) {
     let vertex = constructingVertices[c];
     if (c == 0) {
-      if (constructingVertices.length < 2) { // || distMouseToStartSqrd > 64
-        context.fillText(vertex.logString(), vertex.x+5, vertex.y-5);
+      if (usingMouseMoveHandler()) {
+        if (constructionSnapping) {
+          if (constructingVertices.length >= 3) {
+            context.fillText('Close Polygon', vertex.x+5, vertex.y-5);
+          } else {
+            context.fillText('Not enough vertices', vertex.x+5, vertex.y-5);
+          }
+        } else {
+          context.fillText('Start', vertex.x+5, vertex.y-5);
+        }
       } else {
-        context.beginPath();
-        context.arc(vertex.x, vertex.y, 8, 0, 2 * Math.PI, false);
-        context.stroke();
-        context.fillText((constructingVertices.length > 2) ? 'Close Polygon' : 'Too Small', vertex.x+6, vertex.y-6);
+        context.fillText('Start', vertex.x+5, vertex.y-5);
       }
-    } else {
-      context.fillText(vertex.logString(), vertex.x+5, vertex.y-5);
+      // context.fillText((constructionSnapping && ) ? 'Close Polygon' : 'Start', vertex.x+5, vertex.y-5);
     }
+
+    // Connect vertices by line
     if (c > 0) {
       context.beginPath();
       context.moveTo(constructingVertices[c-1].x, constructingVertices[c-1].y);
       context.lineTo(vertex.x, vertex.y);
       context.stroke();
     }
-    if (c == constructingVertices.length - 1 ) {
-      context.beginPath();
-      context.moveTo(vertex.x, vertex.y);
-      // if (distMouseToStartSqrd > 64) {
-      //   context.lineTo(mouse.loc.x, mouse.loc.y);
-      // } else {
-        context.lineTo(constructingVertices[0].x, constructingVertices[0].y);
-      // }
-      context.stroke();
 
-      // if (distMouseToStartSqrd > 64) {
-      //   context.beginPath();
-      //   context.arc(mouse.loc.x, mouse.loc.y, 3, 0, 2 * Math.PI, false);
-      //   context.stroke();
-      // }
+    // Last vertex
+    if (c == constructingVertices.length - 1) {
+
+      // Connect to mouse or last start vertex
+      if (usingMouseMoveHandler()) {
+        context.beginPath();
+        context.moveTo(vertex.x, vertex.y);
+        if (constructionSnapping) {
+          context.lineTo(constructingVertices[0].x, constructingVertices[0].y);
+        } else {
+          context.lineTo(constructionMouse.x, constructionMouse.y);
+        }
+        context.stroke();
+      }
     }
 
-    context.beginPath();
-    context.arc(vertex.x, vertex.y, 3, 0, 2 * Math.PI, false);
-    context.stroke();
+    if (usingMouseMoveHandler() && !constructionSnapping) {
+      context.fillText(vertex.logString(), constructionMouse.x+5, constructionMouse.y-5);
+    }
   }
 }
 
@@ -395,6 +402,7 @@ function loadFromCookies() {
   let cookieData = getCookie('layoutData')
   if (cookieData !== '') {
     blockers = [];
+    boundsBlocker = undefined;
     let blockersJson = JSON.parse(cookieData)
     blockersJson.forEach(b => newBlocker(b.map(v => new Point(v[0], v[1])), boundsBlocker === undefined))
     return true
@@ -411,6 +419,7 @@ function loadFromServer() {
         return;
       }
       blockers = [];
+      boundsBlocker
       let blockersJson = JSON.parse(this.responseText)
       blockersJson.forEach(b => newBlocker(b.map(p => new Point(p[0], p[1])), boundsBlocker === undefined))
 
