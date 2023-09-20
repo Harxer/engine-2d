@@ -10,13 +10,15 @@
  */
 
 /** TODO: Update ticks will not be passed time deltas longer than this value. */
-let TICK_HERTZ_MIN = 1000 / 60
+// let TICK_HERTZ_MIN = 1000 / 60
 
 /** Global hertz override for all intervals. Useful when capturing frames for a render. */
-let _constant_time_step_override = false
-let CONSTANT_TIME_STEP = 1000 / 60
-export const enableConstantTimeStep = _ => _constant_time_step_override = true
-export const disableConstantTimeStep = _ => _constant_time_step_override = false
+let _constantTimeStepOverride = false
+let _constantTimeStepHertz = 60 // ms
+export const enableConstantTimeStep = _ => _constantTimeStepOverride = true
+export const disableConstantTimeStep = _ => _constantTimeStepOverride = false
+/** Set global constant time step hertz rate in seconds. */
+export const setConstantTimeStepHertz = val => _constantTimeStepHertz = val / 1000;
 
 // Animation render API setup - vendor prefixes
 if (typeof window !== "undefined") {
@@ -33,24 +35,28 @@ if (typeof window !== "undefined") {
  * TickInterval object.
  *
  * @param {string} label - Unique label to identify tick interval.
- * @param {function|[function]} callback - Callback(s) to initialize interval with. Can be a singular function or array of functions
+ * @param {function(delta, timestamp)|[function(delta, timstamp)]} callback - Callback(s) to initialize interval with. Can be a singular function or array of functions
  * @param {int} hertz - Target tick speed. Defaults to zero for faster tick rate.
  */
 class TickInterval {
-  constructor(label, callback, hertz = 0) {
+  constructor(label, callback = [], hertz = 0) {
     this.label = label;
     this.hertz = hertz;
 
     /** Callbacks executed at target this.hertz increment */
-    this._callbacks = Array.isArray(callback) ? [...callback] : [callback ]; /* [{ id: int, callback: Function}] */
+    this._callbacks = [/* { id: int, callback: Function} */]
     /** Callbacks that have been marked for removal and need to be cleaned up  */
     this._disposedCallbacks = [/* int */];
     /** Last time this tick executed callbacks */
     this._lastExecutionTime = 0
-    /** Time remaining to next tick interval */
-    this._remainingTime = 0
     /** Time interval was paused */
     this._pauseTime = 0
+
+    if (Array.isArray(callback)) {
+      callback.forEach((fn => this.addCallback(fn)).bind(this))
+    } else {
+      this.addCallback(callback)
+    }
   }
 
   /**
@@ -66,7 +72,7 @@ class TickInterval {
     while (this._callbacks.includes(evt => evt.id === id)) {
       id++
     }
-    this._callbacks.push({id, callback})
+    this._callbacks.push({id, fn: callback})
     return id
   }
 
@@ -98,23 +104,29 @@ class TickInterval {
    */
   processTime(timeNow) {
     // Cleanup disposed callbacks
-    this._disposedCallbacks.forEach(id => {
-      let callbackIndex = this._callbacks.findIndex(evt => evt.id === id)
-      if (callbackIndex != -1) {
-        this._callbacks.splice(callbackIndex, 1)
-      }
-    })
+    this._callbacks = this._callbacks.filter(c => !this._disposedCallbacks.includes(c.id))
     this._disposedCallbacks = [];
 
+    // This assumes we want to run constant time steps as fast as possible with constant manual deltas
+    if (_constantTimeStepOverride) {
+      this._callbacks.forEach(callback => callback(_constantTimeStepHertz, timeNow));
+      return;
+    }
+
     // Process time difference
-    this._remainingTime -= Math.min((timeNow - this._lastExecutionTime), this.hertz);
-    if (_constant_time_step_override || this._remainingTime <= 0) {
-      this._remainingTime += this.hertz;
-      // Execute tick callbacks
-      // TODO check necessity of: let dT = Math.min(Math.abs(updateTime - _lastUpdateTime), TICK_HERTZ_MIN)
-      let delta = _constant_time_step_override ? CONSTANT_TIME_STEP : Math.abs(timeNow - this._lastExecutionTime);
-      this._callbacks.forEach(callback => callback(delta / 1000, timeNow));
-      this._lastExecutionTime = timeNow;
+    let delta = timeNow - this._lastExecutionTime;
+    if (delta > this.hertz) {
+      this._callbacks.forEach(callback => callback.fn(delta / 1000, timeNow));
+      // Setting _lastExecutionTime simply to `timeNow` will cause the clock to drift.
+      // We need capture the spillover so we set back the time by `delta - this.hertz`.
+      if (this.hertz) {
+        // If time does not get processed for a period longer than a hertz tick, the next tick
+        // will send a very large delta then wait a long time due to the large spillover, so we
+        // need to mod the difference by the hertz rate to get our next tick back in step.
+        // Skip this if hertz is zero since `% 0` is NaN.
+        delta = delta % this.hertz;
+      }
+      this._lastExecutionTime = timeNow - (delta - this.hertz);
     }
   }
 
@@ -138,6 +150,7 @@ class TickInterval {
 let _running = false
 let _animationFrameId;
 let _tickIntervals = [];
+let _disposedIntervals = [/* int */];
 
 /** Internal: Handle requestAnimFrame callback. */
 function update(timeNow) {
@@ -149,14 +162,18 @@ function update(timeNow) {
  * Creates a tick interval with the given unique label
  *
  * @param {string} label - Unique label to identify tick interval.
- * @param {function|[function]} callback - Callback(s) to initialize interval with. Can be a singular function or array of functions
+ * @param {function(delta, timestamp)|[function(delta, timestamp)]} callback - Callback(s) to initialize interval with. Can be a singular function or array of functions
  * @param {int} hertz - Target tick speed. Default is zero for highest possible tick rate.
  */
-export function addInterval(label, callback, hertz = 0) {
+export function addInterval(label, callback = [], hertz = 0) {
   if (_tickIntervals.some(tickInterval => tickInterval.label == label))
     throw `Interval label "${label}" is already in use.`
 
   _tickIntervals.push(new TickInterval(label, callback, hertz));
+}
+
+export function removeInterval(label) {
+  _disposedIntervals.push(label)
 }
 
 /**
@@ -196,9 +213,13 @@ export const running = () => _running
 
 /** Start tick clock with given interval callbacks. */
 export function start() {
-  _constant_time_step_override = true;
+  _constantTimeStepOverride = false;
   if (_animationFrameId) return
   _running = true
+
+  // Cleanup old intervals
+  _tickIntervals = _tickIntervals.filter(t => !_disposedIntervals.includes(t.label))
+  _disposedIntervals = []
 
   // Track tick intervals in progress
   let timeNow = performance.now()
@@ -231,7 +252,7 @@ export async function flush() {
  * piping a render intervals to output. */
 export function stepTick() {
   if (_running) stop()
-  _constant_time_step_override = true;
+  _constantTimeStepOverride = true;
   window.requestAnimationFrame(update)
 }
 
