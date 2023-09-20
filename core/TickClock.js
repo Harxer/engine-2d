@@ -48,7 +48,7 @@ class TickInterval {
     /** Callbacks that have been marked for removal and need to be cleaned up  */
     this._disposedCallbacks = [/* int */];
     /** Last time this tick executed callbacks */
-    this._lastExecutionTime = 0
+    this._lastExecutionTime = performance.now()
     /** Time interval was paused */
     this._pauseTime = 0
 
