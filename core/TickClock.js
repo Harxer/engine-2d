@@ -126,7 +126,7 @@ class TickInterval {
         // Skip this if hertz is zero since `% 0` is NaN.
         delta = delta % this.hertz;
       }
-      this._lastExecutionTime = timeNow - (delta - this.hertz);
+      this._lastExecutionTime = timeNow - delta;
     }
   }
 
@@ -154,6 +154,10 @@ let _disposedIntervals = [/* int */];
 
 /** Internal: Handle requestAnimFrame callback. */
 function update(timeNow) {
+  // Cleanup old intervals
+  _tickIntervals = _tickIntervals.filter(t => !_disposedIntervals.includes(t.label))
+  _disposedIntervals = []
+
   _tickIntervals.forEach(tickInterval => tickInterval.processTime(timeNow))
   if (_running) _animationFrameId = window.requestAnimationFrame(update)
 }
@@ -213,17 +217,23 @@ export const running = () => _running
 
 /** Start tick clock with given interval callbacks. */
 export function start() {
-  _constantTimeStepOverride = false;
   if (_animationFrameId) return
   _running = true
 
-  // Cleanup old intervals
-  _tickIntervals = _tickIntervals.filter(t => !_disposedIntervals.includes(t.label))
-  _disposedIntervals = []
+  // Initialize timestamps
+  let timeNow = performance.now()
+  _tickIntervals.forEach(tickInterval => tickInterval._lastExecutionTime = timeNow)
+
+  _animationFrameId = window.requestAnimationFrame(update)
+}
+
+export function resume() {
+  if (_animationFrameId) return
+  _running = true
 
   // Track tick intervals in progress
   let timeNow = performance.now()
-  _tickIntervals.forEach(tickInterval => tickInterval.pauseTime(timeNow))
+  _tickIntervals.forEach(tickInterval => tickInterval.resumeTime(timeNow))
 
   _animationFrameId = window.requestAnimationFrame(update)
 }
@@ -235,7 +245,7 @@ export function stop() {
 
   // Recover tick intervals in progress
   let timeNow = performance.now()
-  _tickIntervals.forEach(tickInterval => tickInterval.resumeTime(timeNow))
+  _tickIntervals.forEach(tickInterval => tickInterval.pauseTime(timeNow))
 
   _animationFrameId = undefined
 }
