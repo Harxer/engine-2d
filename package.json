@@ -1,6 +1,6 @@
 {
   "name": "@harxer/engine-2d",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Harxer JS graphic 2D engine.",
   "type": "module",
   "repository": "git@github.com:Harxer/engine-2d.git",

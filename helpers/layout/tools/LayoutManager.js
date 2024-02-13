@@ -1,5 +1,4 @@
-// import { Point, Segment } from '@harxer/geometry'
-import { Point, Segment } from '../../../node_modules/@harxer/geometry/geometry.js'
+import { Point, Segment } from '@harxer/geometry'
 import Layout from '../Layout.js';
 
 let constructingVertices = [];
