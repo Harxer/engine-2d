@@ -209,7 +209,7 @@ export default function triangulateGraph(boundsPolygon, holePolygons) {
     // if (globalDebug) graphBuilder.forEach(({vertex}, i) => if (globalDebug) console.log(`graph ${i}`, [vertex]))
   }
 
-  if (globalDebug) graphBuilder.forEach(({vertex}, i) => i > 0 ? if (globalDebug) console.log(`Final graph ${i}`, [new Segment(graphBuilder[i - 1].vertex, vertex  )]) : undefined)
+  if (globalDebug) graphBuilder.forEach(({vertex}, i) => i > 0 ? console.log(`Final graph ${i}`, [new Segment(graphBuilder[i - 1].vertex, vertex  )]) : undefined)
   graphBuilder.forEach(setNodeData);
 
   let triangles = [];
