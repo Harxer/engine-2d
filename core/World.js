@@ -16,6 +16,13 @@
 import * as TickClock from './TickClock.js'
 import InputReader, { InputInitializer } from './Input.js'
 
+/** Controls console logging throughout package. */
+export let globalDebug = false;
+/** Override global console logging throughout package. @param {boolean} value  */
+export function setGlobalDebug(value) {
+  globalDebug = value;
+}
+
 let _htmlCanvasElement;
 let _renderContext;
 let _canvasFlush = true
