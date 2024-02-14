@@ -77,7 +77,7 @@ export function cameraOffset(x, y) {
  * @param {Function} callback
  */
 export function addTickClockInterval(label, hertz, callback) {
-  TickClock.addInterval(label,  hertz, callback);
+  TickClock.addInterval(label, hertz, callback);
 }
 
 /** Dispose entities flagged for removal */
@@ -180,6 +180,6 @@ export function init(htmlCanvasElement) {
 
   // Setup tick clock
   TickClock.addInterval('update', updateTick, 0)
-  TickClock.addInterval('render', renderTick, 1000 / 60)
+  TickClock.addInterval('render', renderTick, 60)
   TickClock.start()
 }

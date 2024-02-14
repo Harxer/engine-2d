@@ -256,9 +256,10 @@ export function reloadDefaultLayout() {
   return new Promise((resolve) => {
     xmlhttp.onreadystatechange = function() {
       if (this.readyState == 4 && this.status == 200) {
+        let parsedLayout = Layout.fromJson(this.responseText);
         // Save to cookies
-        setCookie(layoutCookieKey, layout2D.serialized(), 365)
-        return resolve(Layout.fromJson(this.responseText))
+        setCookie(layoutCookieKey, parsedLayout.serialized(), 365)
+        return resolve(parsedLayout)
       }
     };
     xmlhttp.open("GET", defaultJsonLayoutUrl, true);

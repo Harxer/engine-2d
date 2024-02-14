@@ -99,7 +99,7 @@ export const InputInitializer = {
    * @param {*} action
    * @returns
    */
-  addKeyAction: (keyCode, action, forPress = true, forRelease = true) => {
+  addKeyAction: (keyCode, action, forPress = false, forRelease = true) => {
     if (typeof action !== 'function') return
     let key = input.key[keyCode]
     if (key === undefined) {

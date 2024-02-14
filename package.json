@@ -1,6 +1,6 @@
 {
   "name": "@harxer/engine-2d",
-  "version": "1.2.11",
+  "version": "1.2.12",
   "description": "Harxer JS graphic 2D engine.",
   "type": "module",
   "repository": "git@github.com:Harxer/engine-2d.git",
@@ -8,6 +8,6 @@
   "author": "Harrison Balogh",
   "license": "ISC",
   "dependencies": {
-    "@harxer/geometry": "^1.2.2"
+    "@harxer/geometry": "^1.2.21"
   }
 }

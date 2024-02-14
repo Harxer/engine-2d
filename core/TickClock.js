@@ -36,14 +36,14 @@ if (typeof window !== "undefined") {
  *
  * @param {string} label - Unique label to identify tick interval.
  * @param {function(delta, timestamp)|[function(delta, timstamp)]} callback - Callback(s) to initialize interval with. Can be a singular function or array of functions
- * @param {int} hertz - Target tick speed. Defaults to zero for faster tick rate.
+ * @param {int} hertz - Target executions per seconds. Defaults to zero for fastest tick rate.
  */
 class TickInterval {
   constructor(label, callback = [], hertz = 0) {
     this.label = label;
-    this.hertz = hertz;
+    this.targetTickDelta = Math.max(hertz / 1000, 0);
 
-    /** Callbacks executed at target this.hertz increment */
+    /** Callbacks executed up to hertz rate */
     this._callbacks = [/* { id: int, callback: Function} */]
     /** Callbacks that have been marked for removal and need to be cleaned up  */
     this._disposedCallbacks = [/* int */];
@@ -115,16 +115,16 @@ class TickInterval {
 
     // Process time difference
     let delta = timeNow - this._lastExecutionTime;
-    if (delta > this.hertz) {
+    if (delta > this.targetTickDelta) {
       this._callbacks.forEach(callback => callback.fn(delta / 1000, timeNow));
       // Setting _lastExecutionTime simply to `timeNow` will cause the clock to drift.
-      // We need capture the spillover so we set back the time by `delta - this.hertz`.
-      if (this.hertz) {
+      // We need capture the spillover so we set back the time by `delta - this.targetTickDelta`.
+      if (this.targetTickDelta) {
         // If time does not get processed for a period longer than a hertz tick, the next tick
         // will send a very large delta then wait a long time due to the large spillover, so we
         // need to mod the difference by the hertz rate to get our next tick back in step.
         // Skip this if hertz is zero since `% 0` is NaN.
-        delta = delta % this.hertz;
+        delta = delta % this.targetTickDelta;
       }
       this._lastExecutionTime = timeNow - delta;
     }
@@ -167,7 +167,7 @@ function update(timeNow) {
  *
  * @param {string} label - Unique label to identify tick interval.
  * @param {function(delta, timestamp)|[function(delta, timestamp)]} callback - Callback(s) to initialize interval with. Can be a singular function or array of functions
- * @param {int} hertz - Target tick speed. Default is zero for highest possible tick rate.
+ * @param {int} hertz - Target executions per second. Default is zero for highest possible tick rate.
  */
 export function addInterval(label, callback = [], hertz = 0) {
   if (_tickIntervals.some(tickInterval => tickInterval.label == label))
@@ -275,16 +275,16 @@ export function stepTick() {
  * @param {integer} ticks
  */
  export function waitTicks(ticks) {
-  return new Promise((resolve) => {
-    let evtId;
+   return new Promise((resolve) => {
+    let intervalLabel = `waitTick_${ticks}_${Math.random()}`;
     let tickCount = ticks
     let countTick = () => {
       tickCount--
       if (tickCount <= 0) {
-        removeTickEvent(evtId)
+        removeInterval(intervalLabel)
         return resolve()
       }
     }
-    evtId = addTickEvent(countTick)
+    addInterval(intervalLabel, countTick)
   })
 }
