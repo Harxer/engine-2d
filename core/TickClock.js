@@ -43,7 +43,7 @@ class TickInterval {
     this.label = label;
 
     /** Desired milliseconds between update calls. */
-    this.targetTickDelta = Math.max(1 / hertz * 1000, 0);
+    this.targetTickDelta = hertz ? (1 / Math.abs(hertz) * 1000) : 0;
 
     /** Callbacks executed up to hertz rate */
     this._callbacks = [/* { id: int, callback: Function} */]
