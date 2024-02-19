@@ -41,7 +41,9 @@ if (typeof window !== "undefined") {
 class TickInterval {
   constructor(label, callback = [], hertz = 0) {
     this.label = label;
-    this.targetTickDelta = Math.max(hertz / 1000, 0);
+
+    /** Desired milliseconds between update calls. */
+    this.targetTickDelta = Math.max(1 / hertz * 1000, 0);
 
     /** Callbacks executed up to hertz rate */
     this._callbacks = [/* { id: int, callback: Function} */]
@@ -115,18 +117,18 @@ class TickInterval {
 
     // Process time difference
     let delta = timeNow - this._lastExecutionTime;
-    if (delta > this.targetTickDelta) {
-      this._callbacks.forEach(callback => callback.fn(delta / 1000, timeNow));
+    if (delta >= this.targetTickDelta) {
+      this._callbacks.forEach(callback => callback.fn(delta, timeNow));
       // Setting _lastExecutionTime simply to `timeNow` will cause the clock to drift.
       // We need capture the spillover so we set back the time by `delta - this.targetTickDelta`.
-      if (this.targetTickDelta) {
+      if (this.targetTickDelta > 0) {
         // If time does not get processed for a period longer than a hertz tick, the next tick
         // will send a very large delta then wait a long time due to the large spillover, so we
         // need to mod the difference by the hertz rate to get our next tick back in step.
         // Skip this if hertz is zero since `% 0` is NaN.
         delta = delta % this.targetTickDelta;
       }
-      this._lastExecutionTime = timeNow - delta;
+      this._lastExecutionTime = timeNow - 2 * delta;
     }
   }
 
