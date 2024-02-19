@@ -125,8 +125,10 @@ class TickInterval {
         // If time does not get processed for a period longer than a hertz tick, the next tick
         // will send a very large delta then wait a long time due to the large spillover, so we
         // need to mod the difference by the hertz rate to get our next tick back in step.
-        // Skip this if hertz is zero since `% 0` is NaN.
         delta = delta % this.targetTickDelta;
+      } else {
+        // Skip this if hertz is zero since `% 0` is NaN.
+        delta = 0;
       }
       this._lastExecutionTime = timeNow - 2 * delta;
     }
