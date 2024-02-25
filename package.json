@@ -8,6 +8,6 @@
   "author": "Harrison Balogh",
   "license": "ISC",
   "dependencies": {
-    "@harxer/geometry": "^1.2.21"
+    "@harxer/geometry": "^1.2.23"
   }
 }
