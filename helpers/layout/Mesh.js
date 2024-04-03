@@ -1,11 +1,16 @@
-import { Polygon } from '@harxer/geometry';
+import { Polygon, Vector } from '@harxer/geometry';
 import triangulateGraph from './Triangulation.js'
 import { globalDebug } from '../../core/World.js';
+import GraphTriangle from './GraphTriangle.js';
 
 /**
- * Provides convenience construction and render methods for polygons. Pathfinding will use the global
- * blockers array to create the world graph layout.
- * @param polygon - Polygon that make up a blocker.
+ * A connected set of triangles within a {Layout}. Can be the hole of a containing {Mesh} tracked
+ * by the `parent` reference. Each hole of this Mesh can be another Mesh - creating a nested
+ * structure. Retrieving the `triangulatedGraph` of this Mesh will get the degenerate connected
+ * triangles interior to its `bounds` polygon while avoiding `holes` polygons.
+ * @param {Polygon} polygon - Boundary polygon of this mesh.
+ * @param {[Mesh]} holes - Any Mesh holes nested in this Mesh.
+ * @param {Mesh} parent - Containing mesh that this mesh is a hole in.
  */
 export default class Mesh {
   constructor(polygon, holes = [], parent) {
@@ -18,29 +23,39 @@ export default class Mesh {
 
     /** Set to undefined if needs new triangulation compute, else array. */
     this._triangulatedGraph = undefined;
+    this._area = undefined;
   }
 
   /** Flag mesh for new triangulation compute on next graph array retrieval. */
   needsTriangulation() {
     this._triangulatedGraph = undefined;
+    this._area = undefined
   }
 
   /** @returns {[GraphTriangle]} */
   get triangulatedGraph() {
-    if (this._triangulatedGraph !== undefined) return this._triangulatedGraph;
-    try {
-      this._triangulatedGraph = triangulateGraph(
-        this.bounds,
-        this.holes.map(hole => hole.bounds.copy.reverse())
-      )
-    } catch(e) {
-      if (globalDebug) console.log(`No bridges. Error: ${e}`, e)
-      this._triangulatedGraph = [];
+    if (this._triangulatedGraph === undefined) {
+      try {
+        this._triangulatedGraph = triangulateGraph(
+          this.bounds,
+          this.holes.map(hole => hole.bounds.copy.reverse())
+        )
+      } catch(e) {
+        if (globalDebug) console.log(`No bridges. Error: ${e}`, e)
+        this._triangulatedGraph = [];
+      }
     }
+    return this._triangulatedGraph;
+  }
+
+  get area() {
+    if (this._area === undefined) {
+      this._area = this.triangulatedGraph.reduce((sum, tri) => sum + tri.area, 0)
+    }
+    return this._area;
   }
 
   render(context) {
-    // Draw originalVertices
     if (this.polygon !== undefined) context.strokeStyle = "Red";
     context.fillStyle = "rgba(200, 50, 50, 0.1)"
     if (this.polygon !== undefined && this.polygon.counterclockwise) context.strokeStyle = "Blue";
@@ -134,5 +149,50 @@ export default class Mesh {
       return true;
     }
     return false;
+  }
+
+  /** TODO - move out of this class.
+   * Get random triangle in triangulated graph weighted by area.
+   * @returns {GraphTriangle?}
+   */
+  getRandomGraphTriangle() {
+    if (!this.triangulatedGraph.length) return undefined;
+
+    const weightedPick = Math.random() * this.area;
+    let aggregateArea = 0;
+    for (let i = 0; i < this.triangulatedGraph.length; i++) {
+      aggregateArea += this.triangulatedGraph[i].area;
+      if (weightedPick < aggregateArea) {
+        return this.triangulatedGraph[i];
+      }
+    }
+    return undefined;
+  }
+
+  /** TODO - move out of this class.
+   * Get random point within mesh boundary (avoiding holes).
+   * @returns {{point: Point, graphTriangle: GraphTriangle}} Object with random point and graphTriangle
+   * it's located inside.
+   */
+  getRandomPoint() {
+    let randomGraphTriangle = this.getRandomGraphTriangle();
+    if (randomGraphTriangle === undefined) return {};
+
+    // Random point in parallelogram, generates points in desired triangle and reflected version of triangle
+    let randomA = Math.random();
+    let randomB = Math.random();
+    // Test if point is in first-half of triangle forming parallelogram (tri.containsPoint(randomPoint)))
+    if (randomA + randomB > 1) {
+      // Rotate or twice-reflect point selected in second-half of parallelogram into first triangle.
+      // This is the same as inverting the modifiers before applying to side vectors
+      randomA = 1 - randomA;
+      randomB = 1 - randomB;
+    }
+
+    let tri = randomGraphTriangle.triangle;
+    let vA = Vector.fromSegment(tri.vertices[0], tri.vertices[1]).multiplyBy(randomA)
+    let vB = Vector.fromSegment(tri.vertices[0], tri.vertices[2]).multiplyBy(randomB)
+    let randomPoint = tri.vertices[0].copy.add(vA.add(vB));
+    return {point: randomPoint, graphTriangle: randomGraphTriangle};
   }
 }
