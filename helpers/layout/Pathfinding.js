@@ -94,7 +94,7 @@ export default function route(graph, origin, destination) {
       if (graphEdge.peer === undefined) return
 
       let neighbor = nodes[graph.indexOf(graphEdge.peer.parent)]
-      let frontier = graphEdge.edge.closestPointOnSegmentTo(current.frontier)
+      let frontier = graphEdge.edge.closestPointToPoint(current.frontier)
       let cost = current.cost + Segment.distance(current.frontier, frontier) // TODO: edge cost is always 0, can change this to distanceSqrd?
       // testLine(current.frontier, frontier)
       if (globalDebug) console.log(`        Edge cost ${cost}`, [current.frontier, frontier, graphEdge.edge]);

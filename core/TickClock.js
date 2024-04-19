@@ -14,6 +14,8 @@
 
 /** Global hertz override for all intervals. Useful when capturing frames for a render. */
 let _constantTimeStepOverride = false
+/** Allows constant time steps to be applied when manually ticking the clock. */
+let _stepTicking = false;
 let _constantTimeStepHertz = 60 // ms
 export const enableConstantTimeStep = _ => _constantTimeStepOverride = true
 export const disableConstantTimeStep = _ => _constantTimeStepOverride = false
@@ -110,8 +112,8 @@ class TickInterval {
     this._disposedCallbacks = [];
 
     // This assumes we want to run constant time steps as fast as possible with constant manual deltas
-    if (_constantTimeStepOverride) {
-      this._callbacks.forEach(callback => callback(_constantTimeStepHertz, timeNow));
+    if (_constantTimeStepOverride || _stepTicking) {
+      this._callbacks.forEach(callback => callback.fn(_constantTimeStepHertz, timeNow));
       return;
     }
 
@@ -142,17 +144,19 @@ class TickInterval {
   }
 
   /** If this tick interval was paused, moves up the last execution time since halt time from `pauseTime()`. */
-  resumeTime(timeNow) {
-    if (this._pauseTime == null) return
-
-    this._lastExecutionTime += timeNow - this._pauseTime
-    this._pauseTime = null
+  startTime(timeNow) {
+    _stepTicking = false;
+    if (this._pauseTime == null) {
+      this._lastExecutionTime = timeNow;
+    } else {
+      this._lastExecutionTime += timeNow - this._pauseTime
+      this._pauseTime = null
+    }
   }
-
 }
 
-let _running = false
 let _animationFrameId;
+/** @type {[TickInterval]} */
 let _tickIntervals = [];
 let _disposedIntervals = [/* int */];
 
@@ -163,7 +167,7 @@ function update(timeNow) {
   _disposedIntervals = []
 
   _tickIntervals.forEach(tickInterval => tickInterval.processTime(timeNow))
-  if (_running) _animationFrameId = window.requestAnimationFrame(update)
+  if (running()) _animationFrameId = window.requestAnimationFrame(update)
 }
 
 /**
@@ -217,41 +221,31 @@ export function removeCallback(label, id) {
 }
 
 /** Get tick interval running state. */
-export const running = () => _running
+export const running = () => (_animationFrameId !== undefined)
 
 /** Start tick clock with given interval callbacks. */
 export function start() {
-  if (_animationFrameId) return
-  _running = true
+  if (running()) return
 
-  // Initialize timestamps
+  // Initialize timestamps - or resume if it was paused
   let timeNow = performance.now()
-  _tickIntervals.forEach(tickInterval => tickInterval._lastExecutionTime = timeNow)
+  _tickIntervals.forEach(tickInterval => tickInterval.startTime(timeNow))
 
   _animationFrameId = window.requestAnimationFrame(update)
 }
 
-export function resume() {
-  if (_animationFrameId) return
-  _running = true
-
-  // Track tick intervals in progress
-  let timeNow = performance.now()
-  _tickIntervals.forEach(tickInterval => tickInterval.resumeTime(timeNow))
-
-  _animationFrameId = window.requestAnimationFrame(update)
-}
+/** @deprecated TickClock.start() now handles paused clocks. */
+export const resume = start;
 
 /** Pause clock ticks. Cancel currently dispatched frame request. */
 export function stop() {
-  _running = false
+  if (!running()) return
   window.cancelAnimationFrame(_animationFrameId)
+  _animationFrameId = undefined
 
   // Recover tick intervals in progress
   let timeNow = performance.now()
   _tickIntervals.forEach(tickInterval => tickInterval.pauseTime(timeNow))
-
-  _animationFrameId = undefined
 }
 
 /** Stop and remove all tick intervals from clock. */
@@ -265,8 +259,8 @@ export async function flush() {
 /** Executes a single tick step without starting engine steps. Useful for testing or
  * piping a render intervals to output. */
 export function stepTick() {
-  if (_running) stop()
-  _constantTimeStepOverride = true;
+  if (running()) stop()
+  _stepTicking = true;
   window.requestAnimationFrame(update)
 }
 

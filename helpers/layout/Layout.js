@@ -4,7 +4,7 @@ import route from './Pathfinding.js'
 import { setLayoutPolygons, pushLayoutPolygon } from './tools/LayoutManager.js';
 import { globalDebug } from '../../core/World.js';
 
-/** Maintains nested mesh object selection, insertion, and deletion. */
+/** Maintains reference to the root of nested mesh structure. object selection, insertion, and deletion. */
 export default class Layout {
   constructor() {
     /**
